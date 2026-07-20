@@ -88,3 +88,5 @@ scripts/debug*.mjs
 
 # Preview files
 .preview
+.cozeproj/reduction
+.codegraph
