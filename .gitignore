@@ -85,3 +85,6 @@ coverage/
 scripts/_shots/
 scripts/screenshot.mjs
 scripts/debug*.mjs
+
+# Preview files
+.preview
