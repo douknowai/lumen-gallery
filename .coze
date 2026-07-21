@@ -7,4 +7,4 @@ run = ["sh", "-c", "pnpm run dev -- --host 0.0.0.0"]
 
 [deploy]
 build = ["pnpm", "install", "&&", "pnpm", "run", "build"]
-run = ["node", "server.js"]
+run = ["node", "dist/server.js"]

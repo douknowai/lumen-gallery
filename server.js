@@ -1,10 +1,12 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { join, extname, dirname } from "node:path";
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const PORT = parseInt(process.env.DEPLOY_RUN_PORT || "5000", 10);
-const DIST = join(process.cwd(), "dist");
+// 从自身所在目录提供静态文件（build 阶段会复制到 dist/ 中）
+const DIST = dirname(fileURLToPath(import.meta.url));
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
