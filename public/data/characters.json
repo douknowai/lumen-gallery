@@ -32,14 +32,6 @@
       "desc": "安全帽反光背心，布展运维风",
       "src": "/assets/characters/worker.glb",
       "height": 1.76
-    },
-    {
-      "id": "mannequin",
-      "name": "流明人台",
-      "label": "经典人台",
-      "desc": "默认美术馆陶瓷人台（内置程序化角色）",
-      "src": null,
-      "height": 1.75
     }
   ]
 }

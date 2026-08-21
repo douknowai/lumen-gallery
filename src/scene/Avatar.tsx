@@ -3,9 +3,8 @@
  * - 当前角色带 GLB：useGLTF 加载 → SkeletonUtils.clone → Box3 实测归一化
  *   （按配置 height 等比缩放、脚底对齐 y=0）→ AnimationMixer 状态机
  *   （Idle <0.1 / Walk <3.1 / Run，crossFadeTo 0.25s 平滑切换，面朝移动方向）。
- * - src 为 null 或 GLB 加载失败：回退内置程序化陶瓷人台 MannequinBody
- *   （保留 gallery.md §8 的呼吸/行走起伏/头部游走程序动画）。
- * 共用规则（两种角色一致）：第一人称整身隐藏、出生升起 0.5s、
+ * - src 为 null 或 GLB 加载失败：不渲染角色身体（仅保留假投影）。
+ * 共用规则：第一人称整身隐藏、出生升起 0.5s、
  * 身体朝向 = 移动方向（角速度 10 rad/s）、假投影 blob、castShadow。
  * 角色素材：Quaternius《Ultimate Animated Character Pack》（CC0），
  * clip 命名 `CharacterArmature|Idle|Walk|Run`（注意 animations[0] 是 Death，必须按名索引）。
@@ -15,7 +14,6 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { MAT } from '@/config/site';
 import { shadowBlobTexture } from '@/scene/textures';
 import { useStore, playerRef } from '@/state/store';
 import { assetUrl } from '@/utils/asset';
@@ -135,7 +133,7 @@ function CharacterBody({ char }: { char: Character }) {
 
   useEffect(() => {
     if (!anim) {
-      console.warn(`[LUMEN] 角色「${char.name}」缺少 Idle/Walk/Run 动画 clip，已回退为内置人台。`);
+      console.warn(`[LUMEN] 角色「${char.name}」缺少 Idle/Walk/Run 动画 clip，角色身体将不渲染。`);
       markCharacterFailed(char.id);
     }
   }, [anim, char.id, char.name, markCharacterFailed]);
@@ -183,97 +181,8 @@ function CharacterBody({ char }: { char: Character }) {
     anim.mixer.update(dt);
   });
 
-  if (!anim) return null; // clip 缺失 → effect 里标记失败，父组件下一帧回退人台
+  if (!anim) return null; // clip 缺失 → effect 里标记失败，角色身体不渲染
   return <primitive object={model} scale={scale} position={[0, footY, 0]} />;
-}
-
-/* ------------------------------------------------------------------ */
-/* 内置程序化陶瓷人台（gallery.md §8，无 GLB 时的回退角色）               */
-/* ------------------------------------------------------------------ */
-function MannequinBody({ rigRef }: { rigRef: React.RefObject<THREE.Group | null> }) {
-  const body = useRef<THREE.Group>(null);
-  const head = useRef<THREE.Mesh>(null);
-  const ring = useRef<THREE.Mesh>(null);
-  const t = useRef(0);
-  const headWander = useRef(0);
-  const wanderTarget = useRef(0);
-  const wanderTimer = useRef(0);
-
-  const ceramic = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: MAT.avatar,
-        roughness: 0.8,
-        emissive: MAT.avatar,
-        emissiveIntensity: 0.06,
-      }),
-    [],
-  );
-  const brass = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: MAT.brass, roughness: 0.35, metalness: 0.85 }),
-    [],
-  );
-
-  useFrame((_, dt) => {
-    const b = body.current;
-    if (!b) return;
-    t.current += dt;
-
-    const speedRatio = Math.min(1, playerRef.speed / 3.0);
-    const running = playerRef.running && speedRatio > 0.5;
-    const walking = speedRatio > 0.05;
-
-    // 待机呼吸 / 行走起伏
-    let yOff = 0;
-    let lean = 0;
-    if (walking) {
-      const freq = running ? 3.4 : 2.2;
-      const amp = running ? 0.05 : 0.035;
-      yOff = Math.abs(Math.sin(t.current * freq * Math.PI)) * amp * speedRatio;
-      lean = (running ? 7 : 4) * (Math.PI / 180) * speedRatio;
-    } else {
-      b.scale.y = 1 + 0.008 * Math.sin((t.current / 2.4) * Math.PI * 2);
-    }
-    b.position.y = yOff;
-    b.rotation.x = THREE.MathUtils.lerp(b.rotation.x, lean, 0.2);
-
-    // 头部随机游走 ±2°
-    wanderTimer.current -= dt;
-    if (wanderTimer.current <= 0) {
-      wanderTimer.current = 2.5 + Math.random() * 2.5;
-      wanderTarget.current = ((Math.random() - 0.5) * 2 * (2 * Math.PI)) / 180;
-    }
-    headWander.current = THREE.MathUtils.lerp(headWander.current, wanderTarget.current, dt * 2);
-    if (head.current) {
-      // 头部先行 15%（视线引导）：身体与目标朝向差的一部分先由头补上
-      const dy = playerRef.yaw - (rigRef.current?.rotation.y ?? playerRef.yaw);
-      head.current.rotation.y = headWander.current + dy * 0.15;
-      head.current.rotation.x = -0.052; // 微后仰 3°
-    }
-    // 颈环反相延迟（惯性错觉）
-    if (ring.current) ring.current.position.y = 1.42 - yOff * 0.6;
-  });
-
-  return (
-    <group ref={body}>
-      {/* 裙摆圆台（离地 0.05） */}
-      <mesh position={[0, 0.35, 0]} material={ceramic} castShadow>
-        <cylinderGeometry args={[0.13, 0.25, 0.6, 20]} />
-      </mesh>
-      {/* 胶囊躯干（肩宽 0.46 收腰 0.36） */}
-      <mesh position={[0, 1.0, 0]} material={ceramic} castShadow>
-        <capsuleGeometry args={[0.21, 0.62, 6, 16]} />
-      </mesh>
-      {/* 黄铜颈环 */}
-      <mesh ref={ring} position={[0, 1.42, 0]} material={brass} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.065, 0.014, 10, 24]} />
-      </mesh>
-      {/* 头部 Ø0.24 */}
-      <mesh ref={head} position={[0, 1.58, 0]} material={ceramic} castShadow>
-        <sphereGeometry args={[0.12, 20, 16]} />
-      </mesh>
-    </group>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -288,7 +197,7 @@ export default function Avatar() {
   const characterId = useStore((s) => s.characterId);
   const failedCharacters = useStore((s) => s.failedCharacters);
 
-  // 解析当前角色：本地选择 → default → 列表首项 → null（纯人台）
+  // 解析当前角色：本地选择 → default → 列表首项 → null
   const char = useMemo(() => {
     if (!characters) return null;
     const id = characterId ?? characters.default;
@@ -324,7 +233,7 @@ export default function Avatar() {
 
     g.position.set(playerRef.x, -0.1 * (1 - rk), playerRef.z);
 
-    // 身体朝向 lerp（角速度 10 rad/s）；GLB 角色与人台均为 +Z 朝前建模
+    // 身体朝向 lerp（角速度 10 rad/s）；GLB 角色为 +Z 朝前建模
     let dy = playerRef.yaw - g.rotation.y;
     while (dy > Math.PI) dy -= Math.PI * 2;
     while (dy < -Math.PI) dy += Math.PI * 2;
@@ -333,7 +242,7 @@ export default function Avatar() {
 
   return (
     <group ref={group}>
-      {useGlb ? <CharacterBody key={char.id} char={char} /> : <MannequinBody rigRef={group} />}
+      {useGlb && <CharacterBody key={char.id} char={char} />}
       {/* 假投影 Ø0.9（两种角色共用，贴地感） */}
       <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[0.9, 0.9]} />

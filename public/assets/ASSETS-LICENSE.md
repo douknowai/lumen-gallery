@@ -68,4 +68,4 @@ Google Fonts（Open Font License）在运行时引用；未随包分发字体文
 | business-man.glb | 商务正装（Business Man） | Quaternius | Poly Pizza | Public Domain (CC0) | https://poly.pizza/m/JFrLIKqvCH |
 | worker.glb | 场馆工作人员（Worker） | Quaternius | Poly Pizza | Public Domain (CC0) | https://poly.pizza/m/Yg2bQZO6Hj |
 
-获取日期：2026-07-17。「流明人台」为 `src/scene/Avatar.tsx` 内置程序化几何角色，纯代码生成、许可干净。
+获取日期：2026-07-17。

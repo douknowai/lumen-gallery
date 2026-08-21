@@ -105,7 +105,6 @@ npm run lint       # ESLint 代码检查
 | casual-woman | 小满 | 休闲女观众 | Quaternius（CC0） | 1.70m |
 | business-man | 顾先生 | 商务正装 | Quaternius（CC0） | 1.80m |
 | worker | 老周 | 场馆工作人员 | Quaternius（CC0） | 1.76m |
-| mannequin | 流明人台 | 经典人台 | 内置程序化（无 GLB） | 1.75m |
 
 ### characters.json 字段
 

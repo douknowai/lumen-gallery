@@ -169,7 +169,7 @@ export const CharacterSchema = z.object({
   label: z.string().min(1),
   /** 一句话描述 */
   desc: z.string().default(''),
-  /** GLB 路径；null = 内置程序化人台 */
+  /** GLB 路径 */
   src: z.string().min(1).nullable().default(null),
   /** 目标身高（米），加载后按实测包围盒等比缩放到该高度 */
   height: z.number().positive().default(1.75),
@@ -189,17 +189,17 @@ export interface CharactersData {
   characters: Character[];
 }
 
-/** characters.json 彻底不可用时的兜底：仅内置程序化人台 */
+/** characters.json 彻底不可用时的兜底：使用默认 GLB 角色 */
 export const FALLBACK_CHARACTERS: CharactersData = {
-  default: 'mannequin',
+  default: 'casual-man',
   characters: [
     {
-      id: 'mannequin',
-      name: '流明人台',
-      label: '经典人台',
-      desc: '默认美术馆陶瓷人台（内置程序化角色）',
-      src: null,
-      height: 1.75,
+      id: 'casual-man',
+      name: '阿澈',
+      label: '休闲男观众',
+      desc: '灰 T 牛仔裤的典型逛展青年',
+      src: '/assets/characters/casual-man.glb',
+      height: 1.78,
     },
   ],
 };
@@ -207,14 +207,14 @@ export const FALLBACK_CHARACTERS: CharactersData = {
 /**
  * 解析并校验 characters.json 原始 JSON。
  * 容错策略（与展品一致，中文警告）：
- * - 顶层结构不合法：警告并整体回退为「仅人台」配置（不抛错、不阻断展览）；
+ * - 顶层结构不合法：警告并整体回退为默认角色配置（不抛错、不阻断展览）；
  * - 单条角色不合法 / id 重复：警告并跳过；
  * - default 指向不存在的角色：警告并回退为首个合法角色。
  */
 export function parseCharactersFile(raw: unknown): CharactersData {
   const top = CharactersFileSchema.safeParse(raw);
   if (!top.success) {
-    console.warn('[LUMEN] characters.json 顶层结构校验失败，已回退为内置人台角色：', top.error.issues[0]?.message);
+    console.warn('[LUMEN] characters.json 顶层结构校验失败，已回退为默认角色：', top.error.issues[0]?.message);
     return FALLBACK_CHARACTERS;
   }
   const seen = new Set<string>();
@@ -233,7 +233,7 @@ export function parseCharactersFile(raw: unknown): CharactersData {
     characters.push(r.data);
   });
   if (characters.length === 0) {
-    console.warn('[LUMEN] characters.json 无一条角色通过校验，已回退为内置人台角色。');
+    console.warn('[LUMEN] characters.json 无一条角色通过校验，已回退为默认角色。');
     return FALLBACK_CHARACTERS;
   }
   let def = top.data.default;
