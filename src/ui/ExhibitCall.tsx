@@ -630,7 +630,7 @@ export default function ExhibitCall() {
       {/* 底部字幕条（影视字幕风格，始终显示、不挡导航） */}
       <motion.div
         key="subtitle"
-        className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex flex-col items-center gap-1.5 px-6"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] z-[60] flex flex-col items-center gap-1.5 px-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
@@ -664,7 +664,7 @@ export default function ExhibitCall() {
         {callCollapsed && (
           <motion.div
             key="collapsed-bar"
-            className={`fixed inset-x-0 z-[60] flex justify-center px-4 ${isMobile ? 'top-16' : 'top-4'}`}
+            className={`fixed inset-x-0 z-[60] flex justify-center px-4 ${isMobile ? 'top-[calc(env(safe-area-inset-top)+4rem)]' : 'top-4'}`}
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}

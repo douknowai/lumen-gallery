@@ -12,8 +12,10 @@ export default function HintChip() {
   const exhibit = useStore((s) => s.data?.exhibits.find((e) => e.id === s.focusedId));
   const appState = useStore((s) => s.appState);
   const isMobile = useStore((s) => s.isMobile);
+  const callExhibitId = useStore((s) => s.callExhibitId);
 
-  const show = appState === 'explore' && !!focusedId && !!exhibit;
+  // 通话折叠（回 explore 走动）时隐藏聚焦 chip，避免与底部居中的 AI 字幕重叠
+  const show = appState === 'explore' && !!focusedId && !!exhibit && !callExhibitId;
   return (
     <div className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2" style={{ zIndex: 20 }}>
       <AnimatePresence>
