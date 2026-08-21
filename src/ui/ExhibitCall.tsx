@@ -111,6 +111,7 @@ export default function ExhibitCall() {
   const pressedRef = useRef(false);
   const aliveRef = useRef(true);
   const playingRef = useRef(false);
+  const inAsrRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const vadRef = useRef<VadRef>(createVadRef());
 
@@ -137,9 +138,12 @@ export default function ExhibitCall() {
     if (v.timer) clearInterval(v.timer);
     v.timer = null;
     v.stream?.getTracks().forEach((t) => t.stop());
-    if (v.recorder && v.recorder.state !== 'inactive') v.recorder.stop();
-    void v.audioCtx?.close().catch(() => {});
+    const rec = v.recorder;
+    // 先断开引用，onstop 的 guard 会判定「recorder 已被 dispose」而忽略残句，
+    // 避免挂断/切模式时把最后一段误送识别
     vadRef.current = createVadRef();
+    if (rec && rec.state !== 'inactive') rec.stop();
+    void v.audioCtx?.close().catch(() => {});
   }, []);
 
   const disposePushResources = useCallback(() => {
@@ -240,7 +244,8 @@ export default function ExhibitCall() {
         if (aliveRef.current) setError('没有录到声音，请靠近麦克风再试');
         return;
       }
-      if (!aliveRef.current) return;
+      if (!aliveRef.current || inAsrRef.current) return;
+      inAsrRef.current = true;
       setBusy('asr');
       setError(null);
       try {
@@ -255,6 +260,7 @@ export default function ExhibitCall() {
       } catch (err) {
         if (aliveRef.current) setError(err instanceof Error ? err.message : '语音识别失败');
       } finally {
+        inAsrRef.current = false;
         if (aliveRef.current) setBusy(null);
       }
     },
@@ -352,21 +358,36 @@ export default function ExhibitCall() {
     }
 
     if (!v.speaking && rms > v.threshold) {
+      // 开口：开始录制本句。MediaRecorder 每次 start→stop 都会产出
+      // 「含完整容器头」的独立片段，避免切片缺头导致后端 audio convert failed
       v.speaking = true;
       v.silenceMs = 0;
-      v.sentenceStart = v.chunks.length;
+      v.chunks.length = 0;
       onSpeakStartRef.current();
+      const rec = v.recorder;
+      if (rec && rec.state === 'inactive') {
+        try {
+          rec.start(250);
+        } catch {
+          /* 忽略：下次开口再试 */
+        }
+      }
     } else if (v.speaking) {
       if (rms < v.threshold * 0.7) {
         v.silenceMs += 80;
-        if (v.silenceMs >= 1200 && v.chunks.length > v.sentenceStart) {
-          const seg = new Blob(v.chunks.slice(v.sentenceStart), {
-            type: v.recorder?.mimeType || 'audio/webm',
-          });
+        if (v.silenceMs >= 1200 && v.chunks.length > 0) {
+          // 断句：停止录制 → onstop 异步产出完整片段并送识别
           v.speaking = false;
           v.silenceMs = 0;
           if (aliveRef.current) setRecording(false);
-          onSegmentEndRef.current(seg);
+          const rec = v.recorder;
+          if (rec && rec.state === 'recording') {
+            try {
+              rec.stop();
+            } catch {
+              /* 忽略 */
+            }
+          }
         }
       } else {
         v.silenceMs = 0;
@@ -402,7 +423,15 @@ export default function ExhibitCall() {
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);
       };
-      recorder.start(250);
+      recorder.onstop = () => {
+        // 仅当 recorder 仍挂载在当前 VAD 会话中才识别，避免挂断/切模式时识别残句
+        if (vadRef.current.recorder !== recorder) return;
+        const seg = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        chunks.length = 0;
+        if (aliveRef.current) onSegmentEndRef.current(seg);
+      };
+      // 注意：这里不在启动时就 start()。由 VAD 检测到开口才 start、断句时 stop，
+      // 保证每个片段的 chunks 都从第一个数据块（含容器头）开始，是独立完整可解码文件
 
       vadRef.current = {
         ...createVadRef(),
