@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PhoneOff, Maximize2, Minimize2, AudioLines, Mic, Headphones } from 'lucide-react';
+import { PhoneOff, Maximize2, Minimize2, AudioLines, Mic, Volume2 } from 'lucide-react';
 import { useStore, selectCallExhibit } from '@/state/store';
 import { narrate, asr, tts, chatStream, type AiExhibitBrief, type ChatMessage } from '@/lib/ai';
 import { encodeAudioToBase64Wav } from '@/lib/encodeWav';
@@ -102,13 +102,14 @@ export default function ExhibitCall() {
   const collapseCall = useStore((s) => s.collapseCall);
   const expandCall = useStore((s) => s.expandCall);
   const closeCall = useStore((s) => s.closeCall);
-  const setCallMode = useStore((s) => s.setCallMode);
+  
   const isMobile = useStore((s) => s.isMobile);
 
   const [transcript, setTranscript] = useState<Transcript[]>([]);
   const [streaming, setStreaming] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy>(null);
   const [recording, setRecording] = useState(false);
+  const [vadActive, setVadActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -485,6 +486,7 @@ export default function ExhibitCall() {
         data: new Uint8Array(analyser.fftSize),
         timer: setInterval(() => detectVad(), 80),
       };
+      if (aliveRef.current) setVadActive(true);
     } catch {
       if (aliveRef.current) setError('无法访问麦克风，请在浏览器中允许麦克风权限');
     }
@@ -492,7 +494,10 @@ export default function ExhibitCall() {
 
   const stopVad = useCallback(() => {
     disposeVadResources();
-    if (aliveRef.current) setRecording(false);
+    if (aliveRef.current) {
+      setRecording(false);
+      setVadActive(false);
+    }
   }, [disposeVadResources]);
 
   const handleVadSegment = useCallback(
@@ -502,17 +507,14 @@ export default function ExhibitCall() {
     [processAudioBlob],
   );
 
-  /* ---------- 模式切换 ---------- */
-  const switchMode = useCallback(() => {
-    const next = callMode === 'push' ? 'vad' : 'push';
-    setCallMode(next);
-    if (next === 'vad') {
-      void startVad();
-    } else {
+  /* ---------- 免提开/关 ---------- */
+  const toggleVad = useCallback(() => {
+    if (vadRef.current.stream || vadRef.current.timer) {
       stopVad();
-      stopRecording();
+    } else {
+      void startVad();
     }
-  }, [callMode, setCallMode, startVad, stopVad, stopRecording]);
+  }, [startVad, stopVad]);
 
   /* ---------- 听介绍 ---------- */
   const handleNarrate = useCallback(async () => {
@@ -545,19 +547,14 @@ export default function ExhibitCall() {
     collapseCall();
   }, [collapseCall]);
 
-  /* ---------- 挂载：按初始模式启动 VAD；卸载清理 ---------- */
+  /* ---------- 挂载：重置存活标记；卸载清理（免提改为手动开启，不再自动监听） ---------- */
   useEffect(() => {
     aliveRef.current = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    if (useStore.getState().callMode === 'vad') {
-      timer = setTimeout(() => void startVad(), 0);
-    }
     return () => {
-      if (timer) clearTimeout(timer);
       aliveRef.current = false;
       stopEverything();
     };
-  }, [startVad, stopEverything]);
+  }, [stopEverything]);
 
   /* ---------- 每轮渲染更新最新回调（供 VAD 循环 / 空格监听读取） ---------- */
   useEffect(() => {
@@ -612,10 +609,10 @@ export default function ExhibitCall() {
           ? (streaming ?? '…')
           : busy === 'tts'
             ? (lastAssistant ?? '')
-            : (lastAssistant ?? (callMode === 'vad' ? '免提聆听中，直接开口说话' : '按住空格或下方按钮说话'));
+            : (lastAssistant ?? (callMode === 'vad' ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击下方按钮开启') : '按住空格或下方按钮说话'));
 
   const statusText = recording
-    ? '正在聆听… 结束说话'
+    ? '正在聆听…'
     : busy === 'narrate'
       ? '正在撰写讲解词…'
       : busy === 'asr'
@@ -625,7 +622,7 @@ export default function ExhibitCall() {
           : busy === 'tts'
             ? '正在播报…'
             : callMode === 'vad'
-              ? '免提聆听中，直接说话'
+              ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击下方按钮开启')
               : '按住说话（空格键或下方按钮）';
 
   return (
@@ -694,16 +691,19 @@ export default function ExhibitCall() {
                   <Mic size={20} strokeWidth={1.5} />
                 </motion.button>
               ) : (
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-full"
-                  style={{ background: recording ? 'var(--brass)' : 'var(--paper-dim)', color: recording ? 'var(--paper)' : 'var(--stone)' }}
-                  title="免提聆听中"
+                <button
+                  type="button"
+                  onClick={toggleVad}
+                  className="flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-95"
+                  style={{ background: vadActive ? 'var(--brass)' : 'var(--paper-dim)', color: recording ? '#a63d2f' : vadActive ? 'var(--paper)' : 'var(--stone)' }}
+                  title={vadActive ? '免提聆听中，点击关闭' : '点击开启免提'}
+                  aria-label={vadActive ? '关闭免提' : '开启免提'}
                 >
                   <span className="relative">
-                    <Headphones size={20} strokeWidth={1.5} />
-                    {recording && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full" style={{ background: 'var(--paper)' }} />}
+                    <AudioLines size={20} strokeWidth={1.5} />
+                    {vadActive && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full" style={{ background: recording ? '#a63d2f' : 'var(--paper)' }} />}
                   </span>
-                </div>
+                </button>
               )}
 
               <div className="mx-0.5 h-6 w-px" style={{ background: 'var(--line)' }} />
@@ -768,7 +768,7 @@ export default function ExhibitCall() {
                     与「{exhibit.title}」语音对话
                   </div>
                   <div className="mt-0.5 font-mono-lumen text-[11px] uppercase tracking-[0.12em]" style={{ color: 'var(--stone)' }}>
-                    {exhibit.artist || 'AI 讲解'} · {callMode === 'vad' ? '免提' : '按住说话'}
+                    {exhibit.artist || 'AI 讲解'}
                   </div>
                 </div>
                 <button
@@ -792,75 +792,93 @@ export default function ExhibitCall() {
 
               {/* 消息区 */}
               <div ref={scrollRef} className="lumen-scroll flex-1 overflow-y-auto px-4 py-4">
-                {transcript.length === 0 && streaming === null && !error && (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'var(--paper-dim)', color: 'var(--brass)' }}>
-                      <Headphones size={24} strokeWidth={1.5} />
-                    </div>
-                    <p className="max-w-[240px] text-[13px] leading-relaxed" style={{ color: 'var(--stone)' }}>
-                      点「听介绍」让它自我介绍，或 {callMode === 'vad' ? '直接开口' : '按住说话'}，它就会以第一人称回应你。
-                    </p>
-                  </div>
-                )}
-
                 {error && (
                   <div className="mb-2 rounded-xl px-3.5 py-2.5 text-[13px]" style={{ background: '#f6e3df', color: '#a63d2f' }}>
                     {error}
                   </div>
                 )}
 
-                {transcript.map((t, i) => {
-                  const isUser = t.role === 'user';
-                  return (
-                    <div key={i} className={`mb-2.5 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                      <div
-                        className="max-w-[82%] whitespace-pre-wrap rounded-[14px] px-3.5 py-2.5 text-[13.5px] leading-relaxed"
-                        style={
-                          isUser
-                            ? { background: 'var(--brass)', color: 'var(--paper)', borderBottomRightRadius: '4px' }
-                            : { background: 'var(--paper-dim)', color: 'var(--ink)', borderBottomLeftRadius: '4px', border: '1px solid var(--line)' }
-                        }
-                      >
-                        {t.content}
-                      </div>
+                {transcript.length === 0 && streaming === null ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'var(--paper-dim)', color: 'var(--brass)' }}>
+                      <AudioLines size={24} strokeWidth={1.5} />
                     </div>
-                  );
-                })}
-
-                {streaming !== null && (
-                  <div className="mb-2.5 flex justify-start">
-                    <div
-                      className="max-w-[82%] whitespace-pre-wrap rounded-[14px] px-3.5 py-2.5 text-[13.5px] leading-relaxed"
-                      style={{ background: 'var(--paper-dim)', color: 'var(--ink)', borderBottomLeftRadius: '4px', border: '1px solid var(--line)' }}
+                    <div>
+                      <p className="font-serif-lumen text-[16px]" style={{ color: 'var(--ink)' }}>想先听听它的故事吗？</p>
+                      <p className="mt-1 max-w-[260px] text-[13px] leading-relaxed" style={{ color: 'var(--stone)' }}>
+                        点下方按钮，让「{exhibit.title}」以第一人称自我介绍。
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleNarrate}
+                      disabled={isBusy}
+                      className="flex items-center gap-2 rounded-full px-5 py-2.5 disabled:opacity-50"
+                      style={{ background: 'var(--brass)', color: 'var(--paper)', boxShadow: '0 10px 24px -10px rgba(166,124,61,.6)' }}
                     >
-                      {streaming}
-                      <span className="ml-0.5 inline-block animate-pulse" style={{ color: 'var(--brass)' }}>▍</span>
-                    </div>
+                      <Volume2 size={18} strokeWidth={1.5} />
+                      <span className="font-serif-lumen text-[14px]">听它的介绍</span>
+                    </button>
+                    <p className="text-[12px]" style={{ color: 'var(--stone)' }}>
+                      也可以 {callMode === 'vad' ? '开启下方免提后直接开口' : '按住下方麦克风说话'}，向它提问
+                    </p>
                   </div>
+                ) : (
+                  <>
+                    <div className="mb-3 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={handleNarrate}
+                        disabled={isBusy}
+                        className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono-lumen text-[11px] uppercase tracking-[0.08em] transition-colors hover:bg-[var(--paper-dim)] disabled:opacity-50"
+                        style={{ borderColor: 'var(--line)', color: 'var(--stone)' }}
+                      >
+                        <Volume2 size={13} strokeWidth={1.5} />
+                        再听一遍介绍
+                      </button>
+                    </div>
+
+                    {transcript.map((t, i) => {
+                      const isUser = t.role === 'user';
+                      return (
+                        <div key={i} className={`mb-2.5 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className="max-w-[82%] whitespace-pre-wrap rounded-[14px] px-3.5 py-2.5 text-[13.5px] leading-relaxed"
+                            style={
+                              isUser
+                                ? { background: 'var(--brass)', color: 'var(--paper)', borderBottomRightRadius: '4px' }
+                                : { background: 'var(--paper-dim)', color: 'var(--ink)', borderBottomLeftRadius: '4px', border: '1px solid var(--line)' }
+                            }
+                          >
+                            {t.content}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {streaming !== null && (
+                      <div className="mb-2.5 flex justify-start">
+                        <div
+                          className="max-w-[82%] whitespace-pre-wrap rounded-[14px] px-3.5 py-2.5 text-[13.5px] leading-relaxed"
+                          style={{ background: 'var(--paper-dim)', color: 'var(--ink)', borderBottomLeftRadius: '4px', border: '1px solid var(--line)' }}
+                        >
+                          {streaming}
+                          <span className="ml-0.5 inline-block animate-pulse" style={{ color: 'var(--brass)' }}>▍</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
-              {/* 底部控制区 */}
+              {/* 底部控制区：唯一主按钮（说话），输入方式已在设置面板选择 */}
               <div className="shrink-0 px-4 pb-3 pt-1" style={{ borderTop: '1px solid var(--line)' }}>
                 <div className="mb-2 flex items-center justify-center gap-1.5 font-mono-lumen text-[10.5px] uppercase tracking-[0.1em]" style={{ color: 'var(--stone)' }}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${recording ? 'animate-pulse' : ''}`} style={{ background: recording ? '#a63d2f' : 'var(--brass)' }} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${recording || vadActive ? 'animate-pulse' : ''}`} style={{ background: recording ? '#a63d2f' : 'var(--brass)' }} />
                   {statusText}
                 </div>
 
-                <div className="flex items-center justify-center gap-6">
-                  <button
-                    type="button"
-                    onClick={handleNarrate}
-                    disabled={isBusy}
-                    className="flex flex-col items-center gap-1.5 disabled:opacity-50"
-                    aria-label="听介绍"
-                  >
-                    <span className="flex h-11 w-11 items-center justify-center rounded-full border transition-colors" style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}>
-                      <AudioLines size={20} strokeWidth={1.5} />
-                    </span>
-                    <span className="font-mono-lumen text-[10.5px]" style={{ color: 'var(--stone)' }}>听介绍</span>
-                  </button>
-
+                <div className="flex flex-col items-center gap-2">
                   {callMode === 'push' ? (
                     <motion.button
                       type="button"
@@ -885,30 +903,26 @@ export default function ExhibitCall() {
                   ) : (
                     <button
                       type="button"
-                      onClick={switchMode}
+                      onClick={toggleVad}
                       className="flex h-16 w-16 items-center justify-center rounded-full transition-transform active:scale-95"
-                      style={{ background: recording ? 'var(--brass)' : 'var(--paper-dim)', color: recording ? 'var(--paper)' : 'var(--stone)' }}
-                      title="免提聆听中，点击切换到按住说话"
-                      aria-label="免提聆听中"
+                      style={{
+                        background: vadActive ? (recording ? '#a63d2f' : 'var(--brass)') : 'var(--paper-dim)',
+                        color: vadActive ? 'var(--paper)' : 'var(--stone)',
+                        boxShadow: vadActive ? '0 0 0 6px rgba(166,124,61,.18)' : 'none',
+                      }}
+                      aria-label={vadActive ? '关闭免提' : '开启免提'}
+                      title={vadActive ? '免提聆听中，点击关闭' : '点击开启免提自动聆听'}
                     >
                       <span className="relative">
-                        <Headphones size={26} strokeWidth={1.5} />
-                        {recording && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 animate-pulse rounded-full" style={{ background: 'var(--paper)' }} />}
+                        <AudioLines size={26} strokeWidth={1.5} />
+                        {vadActive && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 animate-pulse rounded-full" style={{ background: recording ? '#a63d2f' : 'var(--paper)' }} />}
                       </span>
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={switchMode}
-                    className="flex flex-col items-center gap-1.5"
-                    aria-label="切换输入模式"
-                  >
-                    <span className="flex h-11 w-11 items-center justify-center rounded-full border transition-colors" style={{ borderColor: callMode === 'vad' ? 'var(--brass)' : 'var(--line)', color: callMode === 'vad' ? 'var(--brass)' : 'var(--ink)' }}>
-                      {callMode === 'push' ? <Headphones size={20} strokeWidth={1.5} /> : <Mic size={20} strokeWidth={1.5} />}
-                    </span>
-                    <span className="font-mono-lumen text-[10.5px]" style={{ color: 'var(--stone)' }}>{callMode === 'push' ? '免提' : '按住'}</span>
-                  </button>
+                  <span className="font-mono-lumen text-[10.5px]" style={{ color: 'var(--stone)' }}>
+                    {callMode === 'push' ? '按住说话 · 桌面可用空格键' : vadActive ? '免提聆听中 · 点击停止' : '点击开启免提自动聆听'}
+                  </span>
                 </div>
               </div>
             </motion.div>
