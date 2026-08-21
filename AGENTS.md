@@ -75,3 +75,11 @@ public/
 - 角色切换持久化到 localStorage（`lumen.character`）
 - AI 语音讲解开关持久化到 localStorage（`lumen.ai`）
 - 后端 AI 接口：`/api/ai/narrate`（口播）、`/api/ai/chat`（SSE 流式对话）、`/api/ai/tts`（合成）、`/api/ai/asr`（识别）
+
+## Git 个人账号接管脚本（scripts/git-sync/）
+
+- **用途**：项目在「公司扣子账号」上部署/打磨后，一键把当前环境的 git 接管回**开发者个人 GitHub 账号**（身份、origin、凭据）。
+- **文件**：`scripts/git-sync/setup-git.sh`（执行脚本）、`config.example.sh`（配置模板）、`config.sh`（真实配置，含 PAT，**已被 .gitignore，严禁入库**）。
+- **用法**：`cp scripts/git-sync/config.example.sh scripts/git-sync/config.sh` → 填写账号与永久 PAT → `bash scripts/git-sync/setup-git.sh`。
+- **永久 PAT**：GitHub → Developer settings → Tokens (classic)，Expiration 选 `No expiration`，勾选 `repo`。
+- **关键实现**：凭据写入 `~/.git-credentials`（0600）；**连接校验用内联 token 且先于写凭据**，避免 git credential-store 在 token 被拒时误清空凭据库；重复运行自动去重。
