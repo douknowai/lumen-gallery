@@ -664,10 +664,10 @@ export default function ExhibitCall() {
         {callCollapsed && (
           <motion.div
             key="collapsed-bar"
-            className="fixed inset-x-0 bottom-[104px] z-[60] flex justify-center px-4"
-            initial={{ opacity: 0, y: 16 }}
+            className={`fixed inset-x-0 z-[60] flex justify-center px-4 ${isMobile ? 'top-16' : 'top-4'}`}
+            initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
+            exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.25 }}
           >
             <div
