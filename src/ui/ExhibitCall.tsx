@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PhoneOff, Maximize2, Minimize2, AudioLines, Mic, Headphones } from 'lucide-react';
 import { useStore, selectCallExhibit } from '@/state/store';
 import { narrate, asr, tts, chatStream, type AiExhibitBrief, type ChatMessage } from '@/lib/ai';
+import { encodeAudioToBase64Wav } from '@/lib/encodeWav';
 
 interface Transcript {
   role: 'user' | 'assistant';
@@ -42,6 +43,10 @@ function pickMimeType(): string {
   return '';
 }
 
+/** ASR 质量控制的时长边界（单位：秒）。低于下限视为“没开口”，高于上限在免提长句中强制断句 */
+const MIN_ASR_SECONDS = 0.3;
+const MAX_VAD_SEGMENT_SECONDS = 20;
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -58,6 +63,7 @@ interface VadRef {
   recorder: MediaRecorder | null;
   chunks: Blob[];
   sentenceStart: number;
+  speechStartMs: number;
   speaking: boolean;
   silenceMs: number;
   baseline: number;
@@ -76,6 +82,7 @@ function createVadRef(): VadRef {
     recorder: null,
     chunks: [],
     sentenceStart: 0,
+    speechStartMs: 0,
     speaking: false,
     silenceMs: 0,
     baseline: 0.02,
@@ -249,7 +256,19 @@ export default function ExhibitCall() {
       setBusy('asr');
       setError(null);
       try {
-        const base64 = await blobToBase64(blob);
+        // 统一编码为 WAV(16kHz·单声道·16bit)，规避 WebM/Opus 容器的 ASR 兼容性问题
+        let base64: string;
+        try {
+          const { base64: wavBase64, seconds } = await encodeAudioToBase64Wav(blob);
+          if (seconds < MIN_ASR_SECONDS) {
+            if (aliveRef.current) setError('太短没听清，请靠近麦克风再说一次');
+            return;
+          }
+          base64 = wavBase64;
+        } catch {
+          // 解码失败为极罕见情况，回退到原始容器 base64，交由后端尽力处理
+          base64 = await blobToBase64(blob);
+        }
         const { text } = await asr(base64);
         if (!aliveRef.current) return;
         if (!text?.trim()) {
@@ -362,6 +381,7 @@ export default function ExhibitCall() {
       // 「含完整容器头」的独立片段，避免切片缺头导致后端 audio convert failed
       v.speaking = true;
       v.silenceMs = 0;
+      v.speechStartMs = Date.now();
       v.chunks.length = 0;
       onSpeakStartRef.current();
       const rec = v.recorder;
@@ -373,6 +393,28 @@ export default function ExhibitCall() {
         }
       }
     } else if (v.speaking) {
+      // 超长强制断句：防止单句无停顿一直录下去，控制单次 ASR 负载
+      const over = Date.now() - v.speechStartMs >= MAX_VAD_SEGMENT_SECONDS * 1000;
+      if (over) {
+        if (inAsrRef.current) {
+          // 上一条仍在识别，若此时断句会丢失内容：顺延计时，等空闲再切
+          v.speechStartMs = Date.now();
+          v.silenceMs = 0;
+          return;
+        }
+        v.speaking = false;
+        v.silenceMs = 0;
+        if (aliveRef.current) setRecording(false);
+        const rec = v.recorder;
+        if (rec && rec.state === 'recording') {
+          try {
+            rec.stop();
+          } catch {
+            /* 忽略 */
+          }
+        }
+        return;
+      }
       if (rms < v.threshold * 0.7) {
         v.silenceMs += 80;
         if (v.silenceMs >= 1200 && v.chunks.length > 0) {
