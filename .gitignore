@@ -96,6 +96,7 @@ DESIGN.md
 github-account-takeover/
 github-account-takeover.skill
 scripts/git-sync/
+.github-bridge.json
 
 # ────────────────────────────────────────────────────────────
 # 开发期临时脚本与截图
