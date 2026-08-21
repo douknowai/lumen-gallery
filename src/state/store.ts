@@ -10,6 +10,7 @@
  */
 import { create } from 'zustand';
 import type { ExhibitsData, Exhibit, CharactersData } from '@/config/schema';
+import { DEFAULT_VOICE_ID } from '@/config/voices';
 
 export type AppState =
   | 'loading'
@@ -21,11 +22,17 @@ export type AppState =
   | 'help'
   | 'characters';
 export type CameraMode = 'third' | 'first';
+/** 通话输入模式：push=按住说话（空格/按钮）；vad=免提自动断句 */
+export type CallMode = 'push' | 'vad';
 
 /** 角色选择持久化 key */
 const CHARACTER_STORAGE_KEY = 'lumen.character';
 /** AI 语音讲解开关持久化 key */
 const AI_STORAGE_KEY = 'lumen.ai';
+/** 音色持久化 key */
+const VOICE_STORAGE_KEY = 'lumen.voice';
+/** 通话输入模式持久化 key */
+const CALL_MODE_STORAGE_KEY = 'lumen.callmode';
 
 /** 启动时读取本地记忆的角色 id（校验在数据加载后由 useGalleryLoader 完成） */
 function readSavedCharacterId(): string | null {
@@ -47,6 +54,26 @@ function readSavedAiEnabled(): boolean {
   }
 }
 
+/** 启动时读取音色 id（默认小荷） */
+function readSavedVoiceId(): string {
+  if (typeof window === 'undefined') return DEFAULT_VOICE_ID;
+  try {
+    return window.localStorage.getItem(VOICE_STORAGE_KEY) || DEFAULT_VOICE_ID;
+  } catch {
+    return DEFAULT_VOICE_ID;
+  }
+}
+
+/** 启动时读取通话输入模式（默认按住说话） */
+function readSavedCallMode(): CallMode {
+  if (typeof window === 'undefined') return 'push';
+  try {
+    return window.localStorage.getItem(CALL_MODE_STORAGE_KEY) === 'vad' ? 'vad' : 'push';
+  } catch {
+    return 'push';
+  }
+}
+
 export interface Store {
   appState: AppState;
   /** 加载数据（校验通过后写入） */
@@ -55,7 +82,7 @@ export interface Store {
   characters: CharactersData | null;
   /** 当前角色 id（持久化 localStorage） */
   characterId: string | null;
-  /** 预载失败的角色 id（运行时回退内置人台） */
+  /** 预载失败的角色 id（运行时隐藏该角色，不渲染身体） */
   failedCharacters: string[];
   /** 打开角色选择器前的状态（关闭时返回） */
   charactersFrom: AppState;
@@ -79,8 +106,14 @@ export interface Store {
   isMobile: boolean;
   /** AI 语音讲解开关（持久化 localStorage，默认关闭） */
   aiEnabled: boolean;
-  /** 展品通话面板是否打开（在 modal 之上叠加） */
-  callOpen: boolean;
+  /** 当前音色 id（持久化 localStorage） */
+  voiceId: string;
+  /** 通话对象展品 id（null=未在通话；折叠后保留以支持边走动边对话） */
+  callExhibitId: string | null;
+  /** 通话面板是否折叠（折叠=回 explore 走动，字幕仍显示） */
+  callCollapsed: boolean;
+  /** 通话输入模式：按住说话 / 免提自动断句 */
+  callMode: CallMode;
   /** 首次进入提示（横屏建议 / Esc 提示） */
   dismissedHints: string[];
 
@@ -114,7 +147,15 @@ export interface Store {
   setMobile: (v: boolean) => void;
   setAiEnabled: (v: boolean) => void;
   toggleAi: () => void;
+  /** 设置音色（持久化） */
+  setVoiceId: (id: string) => void;
+  /** 设置通话输入模式（持久化） */
+  setCallMode: (m: CallMode) => void;
   openCall: () => void;
+  /** 折叠通话面板（关闭 modal 回 explore 走动，保留通话与字幕） */
+  collapseCall: () => void;
+  /** 展开通话面板（重新打开展品 modal） */
+  expandCall: () => void;
   closeCall: () => void;
   dismissHint: (key: string) => void;
   /** Esc 逐层返回：lightbox > modal > help > explore */
@@ -138,7 +179,10 @@ export const useStore = create<Store>((set, get) => ({
   pointerLocked: false,
   isMobile: false,
   aiEnabled: readSavedAiEnabled(),
-  callOpen: false,
+  voiceId: readSavedVoiceId(),
+  callExhibitId: null,
+  callCollapsed: false,
+  callMode: readSavedCallMode(),
   dismissedHints: [],
 
   setData: (d) => set({ data: d }),
@@ -179,7 +223,13 @@ export const useStore = create<Store>((set, get) => ({
     ),
   setFocused: (id) => set((s) => (s.focusedId === id ? s : { focusedId: id })),
   openModal: (id) => set({ appState: 'modal', modalId: id, focusedId: null }),
-  closeModal: () => set({ appState: 'explore', modalId: null, callOpen: false }),
+  closeModal: () =>
+    set((s) => ({
+      appState: 'explore',
+      modalId: null,
+      // 通话进行中时关闭弹窗 → 自动折叠（保留字幕，回 explore 走动）
+      callCollapsed: s.callExhibitId ? true : s.callCollapsed,
+    })),
   openLightbox: (src) => set({ appState: 'lightbox', lightboxSrc: src }),
   closeLightbox: () => set((s) => ({ appState: s.modalId ? 'modal' : 'explore', lightboxSrc: null })),
   openHelp: () => set({ appState: 'help' }),
@@ -199,16 +249,37 @@ export const useStore = create<Store>((set, get) => ({
     const s = get();
     s.setAiEnabled(!s.aiEnabled);
   },
-  openCall: () => set((s) => (s.appState === 'modal' ? { callOpen: true } : s)),
-  closeCall: () => set({ callOpen: false }),
+  setVoiceId: (id) => {
+    try {
+      window.localStorage.setItem(VOICE_STORAGE_KEY, id);
+    } catch {
+      /* 隐私模式等场景忽略 */
+    }
+    set({ voiceId: id });
+  },
+  setCallMode: (m) => {
+    try {
+      window.localStorage.setItem(CALL_MODE_STORAGE_KEY, m);
+    } catch {
+      /* 隐私模式等场景忽略 */
+    }
+    set({ callMode: m });
+  },
+  openCall: () =>
+    set((s) => (s.appState === 'modal' && s.modalId ? { callExhibitId: s.modalId, callCollapsed: false } : s)),
+  collapseCall: () => set({ callCollapsed: true, appState: 'explore', modalId: null }),
+  expandCall: () =>
+    set((s) => (s.callExhibitId ? { callCollapsed: false, appState: 'modal', modalId: s.callExhibitId } : s)),
+  closeCall: () => set({ callExhibitId: null, callCollapsed: false, appState: 'explore', modalId: null }),
   dismissHint: (key) => set((s) => ({ dismissedHints: [...s.dismissedHints, key] })),
   escape: () => {
     const s = get();
     if (s.appState === 'lightbox') s.closeLightbox();
-    else if (s.appState === 'modal' && s.callOpen) s.closeCall();
+    else if (s.appState === 'modal' && s.callExhibitId && !s.callCollapsed) s.collapseCall();
     else if (s.appState === 'modal') s.closeModal();
     else if (s.appState === 'characters') s.closeCharacters();
     else if (s.appState === 'help') s.closeHelp();
+    else if (s.callExhibitId && s.callCollapsed) s.closeCall();
   },
 }));
 
@@ -216,6 +287,12 @@ export const useStore = create<Store>((set, get) => ({
 export function selectModalExhibit(s: Store): Exhibit | null {
   if (!s.data || !s.modalId) return null;
   return s.data.exhibits.find((e) => e.id === s.modalId) ?? null;
+}
+
+/** 当前通话对象展品（折叠后仍保留，供字幕/通话条使用） */
+export function selectCallExhibit(s: Store): Exhibit | null {
+  if (!s.data || !s.callExhibitId) return null;
+  return s.data.exhibits.find((e) => e.id === s.callExhibitId) ?? null;
 }
 
 /**

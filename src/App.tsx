@@ -21,6 +21,7 @@ export default function App() {
   useGalleryLoader();
   useKeyboard();
   const appState = useStore((s) => s.appState);
+  const callExhibitId = useStore((s) => s.callExhibitId);
 
   return (
     <>
@@ -30,7 +31,7 @@ export default function App() {
       <AnimatePresence>{appState === 'help' && <HelpPanel key="help" />}</AnimatePresence>
       <AnimatePresence>{appState === 'characters' && <CharacterSelector key="characters" />}</AnimatePresence>
       <ExhibitModal />
-      <ExhibitCall />
+      {callExhibitId && <ExhibitCall key={callExhibitId} />}
       <Lightbox />
       <LoadingOverlay />
     </>

@@ -62,7 +62,7 @@ public/
 - **灯光预算**：同屏投影光源 ≤4，射灯按玩家距离就近激活
 - **移动端降级**：pixelRatio 限制 1.5、关闭射灯阴影、玻璃改磨砂
 - **弹窗降帧**：打开弹窗时 3D 降到 30fps
-- **AI 语音讲解**：开启后每件展品可「打电话式」对话，链路为 录音 → ASR → LLM 流式 → TTS 播放，全部走 Node 后端真实 SDK 调用
+- **AI 语音讲解**：开启后每件展品可「打电话式」对话，链路为 录音 → ASR → LLM 流式 → TTS 播放，全部走 Node 后端真实 SDK 调用；支持讲解音色选择、「按住说话（空格快捷键）/ 免提（前端 Web Audio + 能量检测 VAD 自动断句）」双输入模式、通话折叠 + 底部影视字幕
 
 ## 状态机
 
@@ -74,6 +74,8 @@ public/
 - 展品配置错误时控制台输出中文警告并跳过，不阻断整个展览
 - 角色切换持久化到 localStorage（`lumen.character`）
 - AI 语音讲解开关持久化到 localStorage（`lumen.ai`）
+- 讲解音色偏好持久化到 localStorage（`lumen.voice`）
+- 通话输入模式（按住/免提）持久化到 localStorage（`lumen.callMode`）
 - 后端 AI 接口：`/api/ai/narrate`（口播）、`/api/ai/chat`（SSE 流式对话）、`/api/ai/tts`（合成）、`/api/ai/asr`（识别）
 
 ## Git 个人账号接管脚本（scripts/git-sync/）

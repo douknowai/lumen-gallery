@@ -66,14 +66,14 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-/** 展品口播介绍：LLM 生成第一人称口播稿 → TTS 合成 */
-export function narrate(exhibit: AiExhibitBrief): Promise<NarrateResult> {
-  return postJson<NarrateResult>('/api/ai/narrate', { uid: getUid(), exhibit });
+/** 展品口播介绍：LLM 生成第一人称口播稿 → TTS 合成（可指定音色 speaker） */
+export function narrate(exhibit: AiExhibitBrief, speaker?: string): Promise<NarrateResult> {
+  return postJson<NarrateResult>('/api/ai/narrate', { uid: getUid(), exhibit, speaker });
 }
 
-/** 文本转语音 */
-export function tts(text: string): Promise<TtsResult> {
-  return postJson<TtsResult>('/api/ai/tts', { uid: getUid(), text });
+/** 文本转语音（可指定音色 speaker） */
+export function tts(text: string, speaker?: string): Promise<TtsResult> {
+  return postJson<TtsResult>('/api/ai/tts', { uid: getUid(), text, speaker });
 }
 
 /** 语音识别（base64 音频） */
