@@ -49,10 +49,10 @@ export default function CharacterSelector() {
         transition={{ type: 'spring', stiffness: 260, damping: 30 }}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-serif-lumen text-[22px] font-medium">选择角色</h2>
+          <h2 className="font-serif-lumen text-[22px] font-medium">设置</h2>
           <button
             type="button"
-            aria-label="关闭角色选择"
+            aria-label="关闭设置"
             onClick={closeCharacters}
             className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-[var(--paper-dim)]"
           >

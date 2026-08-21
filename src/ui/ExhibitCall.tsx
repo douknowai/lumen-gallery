@@ -127,6 +127,7 @@ export default function ExhibitCall() {
   const onSegmentEndRef = useRef<(blob: Blob) => void>(() => {});
   const pressStartRef = useRef<() => void>(() => {});
   const pressEndRef = useRef<() => void>(() => {});
+  const toggleVadRef = useRef<() => void>(() => {});
 
   const isBusy = busy !== null;
 
@@ -562,6 +563,7 @@ export default function ExhibitCall() {
     onSegmentEndRef.current = handleVadSegment;
     pressStartRef.current = handlePressStart;
     pressEndRef.current = handlePressEnd;
+    toggleVadRef.current = toggleVad;
   });
 
   /* ---------- 空格键按住说话 ---------- */
@@ -570,12 +572,15 @@ export default function ExhibitCall() {
       if (ev.code !== 'Space') return;
       const st = useStore.getState();
       if (!st.callExhibitId) return;
-      if (st.callMode !== 'push') return;
       const target = ev.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
       ev.preventDefault();
       if (ev.repeat) return;
-      pressStartRef.current();
+      if (st.callMode === 'push') {
+        pressStartRef.current();
+      } else {
+        toggleVadRef.current();
+      }
     };
     const up = (ev: KeyboardEvent) => {
       if (ev.code !== 'Space') return;
@@ -609,7 +614,7 @@ export default function ExhibitCall() {
           ? (streaming ?? '…')
           : busy === 'tts'
             ? (lastAssistant ?? '')
-            : (lastAssistant ?? (callMode === 'vad' ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击下方按钮开启') : '按住空格或下方按钮说话'));
+            : (lastAssistant ?? (callMode === 'vad' ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击空格或上方按钮开启') : '按住空格或上方按钮说话'));
 
   const statusText = recording
     ? '正在聆听…'
@@ -622,7 +627,7 @@ export default function ExhibitCall() {
           : busy === 'tts'
             ? '正在播报…'
             : callMode === 'vad'
-              ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击下方按钮开启')
+              ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击空格或下方按钮开启')
               : '按住说话（空格键或下方按钮）';
 
   return (
@@ -911,7 +916,7 @@ export default function ExhibitCall() {
                         boxShadow: vadActive ? '0 0 0 6px rgba(166,124,61,.18)' : 'none',
                       }}
                       aria-label={vadActive ? '关闭免提' : '开启免提'}
-                      title={vadActive ? '免提聆听中，点击关闭' : '点击开启免提自动聆听'}
+                      title={vadActive ? '免提聆听中，点击关闭' : '空格/点击开启免提自动聆听'}
                     >
                       <span className="relative">
                         <AudioLines size={26} strokeWidth={1.5} />
@@ -921,7 +926,7 @@ export default function ExhibitCall() {
                   )}
 
                   <span className="font-mono-lumen text-[10.5px]" style={{ color: 'var(--stone)' }}>
-                    {callMode === 'push' ? '按住说话 · 桌面可用空格键' : vadActive ? '免提聆听中 · 点击停止' : '点击开启免提自动聆听'}
+                    {callMode === 'push' ? '按住说话 · 桌面可用空格键' : vadActive ? '免提聆听中 · 点击停止' : '空格/点击开启免提自动聆听'}
                   </span>
                 </div>
               </div>

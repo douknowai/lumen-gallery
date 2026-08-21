@@ -2,7 +2,7 @@
  * TopBar.tsx — HUD 顶栏：左字标 / 右视角切换·帮助·全屏按钮（overlay.md §4）。
  */
 import { motion } from 'framer-motion';
-import { PersonStanding, Eye, HelpCircle, Maximize, Users, AudioLines } from 'lucide-react';
+import { PersonStanding, Eye, HelpCircle, Maximize, Settings, AudioLines } from 'lucide-react';
 import { useStore } from '@/state/store';
 import { IconButton } from './primitives';
 
@@ -56,11 +56,11 @@ export default function TopBar() {
         </IconButton>
         {showCharacters && (
           <IconButton
-            title="选择角色"
+            title="设置"
             onClick={toggleCharacters}
             active={appState === 'characters'}
           >
-            <Users size={20} strokeWidth={1.5} />
+            <Settings size={20} strokeWidth={1.5} />
           </IconButton>
         )}
         <IconButton

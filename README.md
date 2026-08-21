@@ -93,7 +93,7 @@ pnpm lint         # ESLint 代码检查
 
 ## 三、角色系统（characters.json）
 
-漫游角色由 `public/data/characters.json` 配置驱动：顶栏「角色」按钮（或加载页「选择角色 →」）
+漫游角色由 `public/data/characters.json` 配置驱动：顶栏「设置」按钮（或加载页「设置 →」）
 打开选择器即时切换，原地淡入生效；选择持久化到 localStorage（`lumen.character`），下次访问自动恢复。
 
 ### 内置角色一览
@@ -193,7 +193,7 @@ src/
               zones.ts（区域判定）· interaction.ts（最近展品聚焦 + 射线点击）
               controls/  键盘 / 指针视角 / 触屏摇杆与捏合
   lib/        ai.ts（后端 AI 接口封装：fetch + SSE 流式读取）
-  ui/         LoadingOverlay / HUD / CharacterSelector（角色选择器）/ Minimap(SVG 小地图) / ExhibitModal / ExhibitCall（语音通话）/ Lightbox / 移动端控件等
+  ui/         LoadingOverlay / HUD / CharacterSelector（设置面板）/ Minimap(SVG 小地图) / ExhibitModal / ExhibitCall（语音通话）/ Lightbox / 移动端控件等
 api.mjs       # AI 语音讲解后端（/api/ai/*，基于 coze-coding-dev-sdk）
 server.js     # 生产静态服务（含 SPA 回退 + /api 分发）
 scripts/

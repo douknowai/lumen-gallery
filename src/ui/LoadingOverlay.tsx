@@ -178,14 +178,14 @@ export default function LoadingOverlay() {
                 >
                   进入展厅 →
                 </motion.button>
-                {/* 角色选择入口（加载页先选人再进展厅） */}
+                {/* 设置入口（加载页先设置角色 / 音色 / 通话输入方式再进展厅） */}
                 <button
                   type="button"
                   onClick={openCharacters}
                   className="text-[12.5px] underline-offset-2 hover:underline"
                   style={{ color: 'var(--stone)' }}
                 >
-                  选择角色 →
+                  设置 →
                 </button>
               </div>
             )}
