@@ -24,6 +24,8 @@ export type CameraMode = 'third' | 'first';
 
 /** 角色选择持久化 key */
 const CHARACTER_STORAGE_KEY = 'lumen.character';
+/** AI 语音讲解开关持久化 key */
+const AI_STORAGE_KEY = 'lumen.ai';
 
 /** 启动时读取本地记忆的角色 id（校验在数据加载后由 useGalleryLoader 完成） */
 function readSavedCharacterId(): string | null {
@@ -35,7 +37,17 @@ function readSavedCharacterId(): string | null {
   }
 }
 
-interface Store {
+/** 启动时读取 AI 语音讲解开关（默认关闭） */
+function readSavedAiEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(AI_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export interface Store {
   appState: AppState;
   /** 加载数据（校验通过后写入） */
   data: ExhibitsData | null;
@@ -65,6 +77,10 @@ interface Store {
   pointerLocked: boolean;
   /** 移动端设备 */
   isMobile: boolean;
+  /** AI 语音讲解开关（持久化 localStorage，默认关闭） */
+  aiEnabled: boolean;
+  /** 展品通话面板是否打开（在 modal 之上叠加） */
+  callOpen: boolean;
   /** 首次进入提示（横屏建议 / Esc 提示） */
   dismissedHints: string[];
 
@@ -96,6 +112,10 @@ interface Store {
   toggleHelp: () => void;
   setPointerLocked: (v: boolean) => void;
   setMobile: (v: boolean) => void;
+  setAiEnabled: (v: boolean) => void;
+  toggleAi: () => void;
+  openCall: () => void;
+  closeCall: () => void;
   dismissHint: (key: string) => void;
   /** Esc 逐层返回：lightbox > modal > help > explore */
   escape: () => void;
@@ -117,6 +137,8 @@ export const useStore = create<Store>((set, get) => ({
   lightboxSrc: null,
   pointerLocked: false,
   isMobile: false,
+  aiEnabled: readSavedAiEnabled(),
+  callOpen: false,
   dismissedHints: [],
 
   setData: (d) => set({ data: d }),
@@ -157,7 +179,7 @@ export const useStore = create<Store>((set, get) => ({
     ),
   setFocused: (id) => set((s) => (s.focusedId === id ? s : { focusedId: id })),
   openModal: (id) => set({ appState: 'modal', modalId: id, focusedId: null }),
-  closeModal: () => set({ appState: 'explore', modalId: null }),
+  closeModal: () => set({ appState: 'explore', modalId: null, callOpen: false }),
   openLightbox: (src) => set({ appState: 'lightbox', lightboxSrc: src }),
   closeLightbox: () => set((s) => ({ appState: s.modalId ? 'modal' : 'explore', lightboxSrc: null })),
   openHelp: () => set({ appState: 'help' }),
@@ -165,10 +187,25 @@ export const useStore = create<Store>((set, get) => ({
   toggleHelp: () => set((s) => ({ appState: s.appState === 'help' ? 'explore' : 'help' })),
   setPointerLocked: (v) => set({ pointerLocked: v }),
   setMobile: (v) => set({ isMobile: v }),
+  setAiEnabled: (v) => {
+    try {
+      window.localStorage.setItem(AI_STORAGE_KEY, v ? '1' : '0');
+    } catch {
+      /* 隐私模式等场景忽略 */
+    }
+    set({ aiEnabled: v });
+  },
+  toggleAi: () => {
+    const s = get();
+    s.setAiEnabled(!s.aiEnabled);
+  },
+  openCall: () => set((s) => (s.appState === 'modal' ? { callOpen: true } : s)),
+  closeCall: () => set({ callOpen: false }),
   dismissHint: (key) => set((s) => ({ dismissedHints: [...s.dismissedHints, key] })),
   escape: () => {
     const s = get();
     if (s.appState === 'lightbox') s.closeLightbox();
+    else if (s.appState === 'modal' && s.callOpen) s.closeCall();
     else if (s.appState === 'modal') s.closeModal();
     else if (s.appState === 'characters') s.closeCharacters();
     else if (s.appState === 'help') s.closeHelp();

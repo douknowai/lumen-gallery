@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ZoomIn, ExternalLink } from 'lucide-react';
+import { X, ZoomIn, ExternalLink, AudioLines } from 'lucide-react';
 import { useStore, selectModalExhibit } from '@/state/store';
 import { Button, MetaRow } from './primitives';
 import { assetUrl } from '@/utils/asset';
@@ -16,6 +16,8 @@ export default function ExhibitModal() {
   const closeModal = useStore((s) => s.closeModal);
   const openLightbox = useStore((s) => s.openLightbox);
   const isMobile = useStore((s) => s.isMobile);
+  const aiEnabled = useStore((s) => s.aiEnabled);
+  const openCall = useStore((s) => s.openCall);
   const [half, setHalf] = useState(false);
 
   const blocks = (key: string, children: React.ReactNode, i: number) => (
@@ -163,6 +165,12 @@ export default function ExhibitModal() {
               {blocks(
                 'actions',
                 <div className="mt-5 flex flex-wrap gap-2.5">
+                  {aiEnabled && (
+                    <Button variant="primary" onClick={openCall}>
+                      <AudioLines size={16} strokeWidth={1.5} />
+                      AI 语音讲解
+                    </Button>
+                  )}
                   {exhibit.type === 'image' && exhibit.src && (
                     <Button variant="primary" onClick={() => openLightbox(assetUrl(exhibit.src))}>
                       <ZoomIn size={16} strokeWidth={1.5} />

@@ -5,6 +5,7 @@
 **LUMEN 流明 · 3D 虚拟展览馆** — 基于 Three.js + React Three Fiber 的浏览器端 3D 虚拟美术馆模板。
 
 - **技术栈**：Vite 7 + React 19 + TypeScript 5 + Three.js 0.185 + React Three Fiber + Zustand + Tailwind CSS 3
+- **AI 能力**：`coze-coding-dev-sdk`（LLM 流式对话 / TTS 语音合成 / ASR 语音识别），运行于 Node 后端
 - **包管理器**：pnpm（禁止使用 npm/yarn）
 - **端口**：通过 `DEPLOY_RUN_PORT` 环境变量读取（默认 5000）
 
@@ -43,9 +44,11 @@ src/
 │   ├── zones.ts              # 区域判定
 │   ├── interaction.ts        # 展品聚焦与交互
 │   └── controls/             # 键盘/指针/触屏输入
-├── ui/                       # UI 组件（HUD/ExhibitModal/Lightbox/Minimap/CharacterSelector）
+├── ui/                       # UI 组件（HUD/ExhibitModal/ExhibitCall/Lightbox/Minimap/CharacterSelector）
+├── lib/ai.ts                 # 后端 AI 接口封装（fetch + SSE 流式读取）
 ├── hooks/                    # 自定义 hooks
 └── components/ui/            # shadcn/ui 组件库
+api.mjs                       # Node 后端 AI 服务（/api/ai/*，含 LLM 流式 SSE/TTS/ASR）
 public/
 ├── data/
 │   ├── exhibits.json         # ★ 展品配置（数据驱动，换展改这里）
@@ -59,13 +62,16 @@ public/
 - **灯光预算**：同屏投影光源 ≤4，射灯按玩家距离就近激活
 - **移动端降级**：pixelRatio 限制 1.5、关闭射灯阴影、玻璃改磨砂
 - **弹窗降帧**：打开弹窗时 3D 降到 30fps
+- **AI 语音讲解**：开启后每件展品可「打电话式」对话，链路为 录音 → ASR → LLM 流式 → TTS 播放，全部走 Node 后端真实 SDK 调用
 
 ## 状态机
 
-`loading → ready → entering → explore ⇄ modal ⇄ lightbox ⇄ characters`
+`loading → ready → entering → explore ⇄ modal ⇄ call ⇄ lightbox ⇄ characters`
 
 ## 注意事项
 
 - 不使用 React StrictMode（会导致 Canvas 效果重复执行）
 - 展品配置错误时控制台输出中文警告并跳过，不阻断整个展览
 - 角色切换持久化到 localStorage（`lumen.character`）
+- AI 语音讲解开关持久化到 localStorage（`lumen.ai`）
+- 后端 AI 接口：`/api/ai/narrate`（口播）、`/api/ai/chat`（SSE 流式对话）、`/api/ai/tts`（合成）、`/api/ai/asr`（识别）

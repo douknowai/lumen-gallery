@@ -10,6 +10,7 @@ import HUD from '@/ui/HUD';
 import HelpPanel from '@/ui/HelpPanel';
 import CharacterSelector from '@/ui/CharacterSelector';
 import ExhibitModal from '@/ui/ExhibitModal';
+import ExhibitCall from '@/ui/ExhibitCall';
 import Lightbox from '@/ui/Lightbox';
 import Toasts from '@/ui/Toasts';
 import { useStore } from '@/state/store';
@@ -29,6 +30,7 @@ export default function App() {
       <AnimatePresence>{appState === 'help' && <HelpPanel key="help" />}</AnimatePresence>
       <AnimatePresence>{appState === 'characters' && <CharacterSelector key="characters" />}</AnimatePresence>
       <ExhibitModal />
+      <ExhibitCall />
       <Lightbox />
       <LoadingOverlay />
     </>

@@ -2,7 +2,7 @@
  * TopBar.tsx — HUD 顶栏：左字标 / 右视角切换·帮助·全屏按钮（overlay.md §4）。
  */
 import { motion } from 'framer-motion';
-import { PersonStanding, Eye, HelpCircle, Maximize, Users } from 'lucide-react';
+import { PersonStanding, Eye, HelpCircle, Maximize, Users, AudioLines } from 'lucide-react';
 import { useStore } from '@/state/store';
 import { IconButton } from './primitives';
 
@@ -13,6 +13,8 @@ export default function TopBar() {
   const toggleCharacters = useStore((s) => s.toggleCharacters);
   const isMobile = useStore((s) => s.isMobile);
   const appState = useStore((s) => s.appState);
+  const aiEnabled = useStore((s) => s.aiEnabled);
+  const toggleAi = useStore((s) => s.toggleAi);
   if (appState === 'modal' || appState === 'lightbox') {
     // 弹窗时顶栏保留可用（帮助/视角仍可切），不变
   }
@@ -61,6 +63,13 @@ export default function TopBar() {
             <Users size={20} strokeWidth={1.5} />
           </IconButton>
         )}
+        <IconButton
+          title={aiEnabled ? '关闭 AI 语音讲解' : '开启 AI 语音讲解'}
+          onClick={toggleAi}
+          active={aiEnabled}
+        >
+          <AudioLines size={20} strokeWidth={1.5} />
+        </IconButton>
         <IconButton title="帮助（H）" onClick={toggleHelp}>
           <HelpCircle size={20} strokeWidth={1.5} />
         </IconButton>

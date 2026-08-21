@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { handleApiRequest } from "./api.mjs";
 
 const PORT = parseInt(process.env.DEPLOY_RUN_PORT || "5000", 10);
 // 从自身所在目录提供静态文件（build 阶段会复制到 dist/ 中）
@@ -32,6 +33,13 @@ const MIME = {
 createServer(async (req, res) => {
   try {
     let pathname = new URL(req.url, `http://localhost:${PORT}`).pathname;
+
+    // AI 接口：先交给 api.mjs 处理（LLM / TTS / ASR）
+    if (pathname.startsWith("/api/")) {
+      await handleApiRequest(req, res);
+      return;
+    }
+
     if (pathname === "/") pathname = "/index.html";
 
     const filePath = join(DIST, pathname);
