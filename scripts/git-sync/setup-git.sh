@@ -18,7 +18,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+# 配置路径优先级：命令行参数 > 环境变量 SETUP_GIT_CONFIG > 脚本同目录 config.sh
+CONFIG_FILE="${1:-${SETUP_GIT_CONFIG:-${SCRIPT_DIR}/config.sh}}"
 
 # ---------- 0. 读取配置 ----------
 if [[ ! -f "${CONFIG_FILE}" ]]; then

@@ -9,7 +9,8 @@
 #
 # 用法：
 #   1. 复制 config.example.sh 为 config.sh 并填写个人账号信息与 PAT
-#   2. bash scripts/git-sync/setup-git.sh
+#   2. bash setup-git.sh [config.sh 路径]
+#      （省略路径参数则读本脚本同目录的 config.sh；亦可用环境变量 SETUP_GIT_CONFIG 指定）
 #   3. 完成后即可 git pull / git add / git commit / git push
 #
 # 说明：连接校验放在写入凭据【之前】，用内联 token 完成，
@@ -18,7 +19,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+# 配置路径优先级：命令行参数 > 环境变量 SETUP_GIT_CONFIG > 脚本同目录 config.sh
+CONFIG_FILE="${1:-${SETUP_GIT_CONFIG:-${SCRIPT_DIR}/config.sh}}"
 
 # ---------- 0. 读取配置 ----------
 if [[ ! -f "${CONFIG_FILE}" ]]; then
