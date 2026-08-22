@@ -32,6 +32,7 @@ export const ExhibitSchema = z.object({
   medium: z.string().optional(),
   credit: z.string().optional(),
   description: z.string().min(1),
+  descriptionEn: z.string().optional(),
   src: z.string().optional(),
   poster: z.string().optional(),
   link: z.string().optional(),

@@ -202,14 +202,17 @@ export function splitSentences(text: string): string[] {
 export async function ttsSegments(text: string, speaker?: string): Promise<TtsSegment[]> {
   const sentences = splitSentences(text);
   if (sentences.length === 0) return [];
-  const results = await Promise.all(
+  const results = await Promise.allSettled(
     sentences.map(async (s) => {
       const { audioUri } = await tts(s, speaker);
       return { text: s, audioUri };
     }),
   );
-  // 剔除合成失败的片段（audioUri 为空的不会存在，这里做兜底过滤）
-  return results.filter((r) => typeof r.audioUri === 'string' && r.audioUri.length > 0);
+  // 单句合成失败不影响其余片段：仅保留成功且 audioUri 有效的片段
+  return results
+    .filter((r): r is PromiseFulfilledResult<TtsSegment> => r.status === 'fulfilled')
+    .map((r) => r.value)
+    .filter((r) => typeof r.audioUri === 'string' && r.audioUri.length > 0);
 }
 
 /** 读取某件展品的对话历史（若没有则返回空数组） */

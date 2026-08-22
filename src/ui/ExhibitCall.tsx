@@ -261,7 +261,7 @@ export default function ExhibitCall() {
         if (aliveRef.current) setBusy(null);
       }
     },
-    [stopAudioInternal, playAudio, playSegments, toBrief, voiceId, exhibit],
+    [stopAudioInternal, playSegments, toBrief, voiceId, exhibit],
   );
 
   /* ---------- 一段音频 → ASR → 对话 ---------- */
@@ -802,7 +802,7 @@ export default function ExhibitCall() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-serif-lumen text-[15px] font-medium" style={{ color: 'var(--ink)' }}>
-                    {lang === 'zh' ? `与「${exhibit.title}」语音对话` : `Talking with "${exhibit.title}"`}
+                    {lang === 'zh' ? `与「${exhibit.title}」语音对话` : `Talking with "${exhibit.titleEn || exhibit.title}"`}
                   </div>
                   <div className="mt-0.5 font-mono-lumen text-[11px] uppercase tracking-[0.12em]" style={{ color: 'var(--stone)' }}>
                     {exhibit.artist || (lang === 'zh' ? 'AI 讲解' : 'AI Guide')}
@@ -841,9 +841,9 @@ export default function ExhibitCall() {
                       <AudioLines size={24} strokeWidth={1.5} />
                     </div>
                     <div>
-                      <p className="font-serif-lumen text-[16px]" style={{ color: 'var(--ink)' }}>想先听听它的故事吗？</p>
+                      <p className="font-serif-lumen text-[16px]" style={{ color: 'var(--ink)' }}>{lang === 'zh' ? '想先听听它的故事吗？' : 'Want to hear its story first?'}</p>
                       <p className="mt-1 max-w-[260px] text-[13px] leading-relaxed" style={{ color: 'var(--stone)' }}>
-                        点下方按钮，让「{exhibit.title}」以第一人称自我介绍。
+                        {lang === 'zh' ? `点下方按钮，让「${exhibit.title}」以第一人称自我介绍。` : `Tap below and let "${exhibit.titleEn || exhibit.title}" introduce itself in the first person.`}
                       </p>
                     </div>
                     <button
@@ -854,7 +854,7 @@ export default function ExhibitCall() {
                       style={{ background: 'var(--brass)', color: 'var(--paper)', boxShadow: '0 10px 24px -10px rgba(166,124,61,.6)' }}
                     >
                       <Volume2 size={18} strokeWidth={1.5} />
-                      <span className="font-serif-lumen text-[14px]">听它的介绍</span>
+                      <span className="font-serif-lumen text-[14px]">{t('exhibit.listen')}</span>
                     </button>
                     <p className="text-[12px]" style={{ color: 'var(--stone)' }}>
                       也可以 {callMode === 'vad' ? '开启下方免提后直接开口' : '按住下方麦克风说话'}，向它提问

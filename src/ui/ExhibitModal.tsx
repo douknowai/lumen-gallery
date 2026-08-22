@@ -20,7 +20,8 @@ export default function ExhibitModal() {
   const aiEnabled = useStore((s) => s.aiEnabled);
   const openCall = useStore((s) => s.openCall);
   const [half, setHalf] = useState(false);
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const zh = lang === 'zh';
 
   const blocks = (key: string, children: React.ReactNode, i: number) => (
     <motion.div
@@ -124,12 +125,18 @@ export default function ExhibitModal() {
               {blocks(
                 'title',
                 <div className="mt-4">
-                  <h2 className="font-serif-lumen text-[26px] font-medium leading-[1.25]">{exhibit.title}</h2>
-                  {exhibit.titleEn && (
-                    <div className="font-serif-lumen mt-1 text-[15px] italic" style={{ color: 'var(--stone)' }}>
-                      {exhibit.titleEn}
-                    </div>
-                  )}
+                  <h2 className="font-serif-lumen text-[26px] font-medium leading-[1.25]">{zh ? exhibit.title : exhibit.titleEn || exhibit.title}</h2>
+                  {zh
+                    ? exhibit.titleEn && (
+                        <div className="font-serif-lumen mt-1 text-[15px] italic" style={{ color: 'var(--stone)' }}>
+                          {exhibit.titleEn}
+                        </div>
+                      )
+                    : exhibit.titleEn && exhibit.titleEn !== exhibit.title && (
+                        <div className="font-serif-lumen mt-1 text-[15px] italic" style={{ color: 'var(--stone)' }}>
+                          {exhibit.title}
+                        </div>
+                      )}
                 </div>,
                 2,
               )}
@@ -153,7 +160,7 @@ export default function ExhibitModal() {
               {blocks(
                 'desc',
                 <p className="lumen-scroll max-h-[30vh] overflow-y-auto text-justify text-[15px] leading-[1.75]" style={{ color: 'var(--ink)' }}>
-                  {exhibit.description}
+                  {zh ? exhibit.description : exhibit.descriptionEn || exhibit.description}
                   {exhibit.type === 'model' && (
                     <span className="mt-2 block text-[13px]" style={{ color: 'var(--stone)' }}>
                       {t('exhibit.modelHint')}

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Map as MapIcon, X } from 'lucide-react';
 import { useStore, playerRef } from '@/state/store';
+import { useI18n } from '@/lib/i18n';
 import { FLOOR_PLAN } from '@/systems/zones';
 
 const SCALE = 3.6;
@@ -23,6 +24,7 @@ export default function Minimap() {
   const zoneId = useStore((s) => s.zone);
   const focusedId = useStore((s) => s.focusedId);
   const isMobile = useStore((s) => s.isMobile);
+  const { t, lang } = useI18n();
   const [open, setOpen] = useState(false);
   const playerG = useRef<SVGGElement>(null);
 
@@ -116,8 +118,8 @@ export default function Minimap() {
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               >
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="font-serif-lumen text-[15px]">展厅平面图</span>
-                  <button type="button" aria-label="关闭地图" onClick={() => setOpen(false)}>
+                  <span className="font-serif-lumen text-[15px]">{t('minimap.title')}</span>
+                  <button type="button" aria-label={t('minimap.close')} onClick={() => setOpen(false)}>
                     <X size={18} />
                   </button>
                 </div>
@@ -126,7 +128,7 @@ export default function Minimap() {
                   {zones?.map((z) => (
                     <div key={z.id} className="flex items-center gap-2 text-[12.5px]" style={{ color: z.id === zoneId ? 'var(--brass)' : 'var(--ink-60)' }}>
                       <span className="block h-1.5 w-1.5" style={{ background: z.id === zoneId ? 'var(--brass)' : 'var(--ink-38)' }} />
-                      {z.name}
+                      {lang === 'zh' ? z.name : z.nameEn}
                     </div>
                   ))}
                 </div>

@@ -5,10 +5,12 @@
  */
 import { AnimatePresence, motion } from 'framer-motion';
 import { useStore } from '@/state/store';
+import { useI18n } from '@/lib/i18n';
 
 export default function ZoneLabel() {
   const zoneId = useStore((s) => s.zone);
   const zone = useStore((s) => s.data?.zones.find((z) => z.id === s.zone));
+  const { lang } = useI18n();
 
   return (
     <motion.div
@@ -35,13 +37,13 @@ export default function ZoneLabel() {
             transition={{ duration: 0.3, ease: 'easeOut' }}
           >
             <div className="font-serif-lumen text-[20px] font-medium leading-[1.3]">
-              {zone?.name ?? ''}
+              {lang === 'zh' ? zone?.name ?? '' : zone?.nameEn ?? ''}
             </div>
             <div
               className="font-mono-lumen mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em]"
               style={{ color: 'var(--stone)' }}
             >
-              {zone?.nameEn ?? ''}
+              {lang === 'zh' ? zone?.nameEn ?? '' : zone?.name ?? ''}
             </div>
           </motion.div>
         </AnimatePresence>

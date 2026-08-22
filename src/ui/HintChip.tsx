@@ -5,6 +5,7 @@
  */
 import { AnimatePresence, motion } from 'framer-motion';
 import { useStore } from '@/state/store';
+import { useI18n } from '@/lib/i18n';
 import { KeyCap } from './primitives';
 
 export default function HintChip() {
@@ -13,6 +14,7 @@ export default function HintChip() {
   const appState = useStore((s) => s.appState);
   const isMobile = useStore((s) => s.isMobile);
   const callExhibitId = useStore((s) => s.callExhibitId);
+  const { t, lang } = useI18n();
 
   // 通话折叠（回 explore 走动）时隐藏聚焦 chip，避免与底部居中的 AI 字幕重叠
   const show = appState === 'explore' && !!focusedId && !!exhibit && !callExhibitId;
@@ -41,7 +43,7 @@ export default function HintChip() {
                 <span className="font-mono-lumen text-[10px] font-medium" style={{ color: 'var(--brass-bright)' }}>
                   {exhibit!.id}
                 </span>
-                <span className="font-serif-lumen text-sm">{exhibit!.title}</span>
+                <span className="font-serif-lumen text-sm">{lang === 'zh' ? exhibit!.title : exhibit!.titleEn || exhibit!.title}</span>
                 {exhibit!.artist && (
                   <span className="text-xs" style={{ color: 'rgba(244,241,234,.6)' }}>
                     {exhibit!.artist}
@@ -50,12 +52,12 @@ export default function HintChip() {
                 <span style={{ color: 'rgba(244,241,234,.3)' }}>·</span>
                 {isMobile ? (
                   <span className="text-[12.5px]" style={{ color: 'var(--brass-bright)' }}>
-                    点按查看
+                    {t('hint.tapView')}
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <KeyCap tone="brass">E</KeyCap>
-                    <span className="text-[12.5px]">查看</span>
+                    <span className="text-[12.5px]">{t('hint.view')}</span>
                   </span>
                 )}
               </motion.span>

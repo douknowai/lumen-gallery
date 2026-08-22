@@ -7,12 +7,14 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useStore, selectModalExhibit } from '@/state/store';
+import { useI18n } from '@/lib/i18n';
 
 export default function Lightbox() {
   const src = useStore((s) => s.lightboxSrc);
   const closeLightbox = useStore((s) => s.closeLightbox);
   const exhibit = useStore(selectModalExhibit);
   const isMobile = useStore((s) => s.isMobile);
+  const { lang } = useI18n();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hintVisible, setHintVisible] = useState(true);
@@ -105,7 +107,7 @@ export default function Lightbox() {
         {/* 底部图注 */}
         <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 text-center">
           <div className="font-serif-lumen text-[15px]" style={{ color: 'var(--paper)' }}>
-            {exhibit?.title}
+            {lang === 'zh' ? exhibit?.title : exhibit?.titleEn || exhibit?.title}
           </div>
           <div className="mt-0.5 text-xs" style={{ color: 'var(--stone)' }}>
             {[exhibit?.artist, exhibit?.year].filter(Boolean).join(' · ')}

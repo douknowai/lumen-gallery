@@ -63,6 +63,12 @@ const DICT: Record<string, { zh: string; en: string }> = {
   'guide.error': { zh: '导览对话失败，请重试', en: 'Guide request failed, please retry' },
   'guide.openChat': { zh: '打开导览员', en: 'Open guide' },
   'guide.close': { zh: '关闭导览员', en: 'Close guide' },
+
+  /* ---------- 聚焦提示 / 小地图 ---------- */
+  'hint.view': { zh: '查看', en: 'View' },
+  'hint.tapView': { zh: '点按查看', en: 'Tap to view' },
+  'minimap.title': { zh: '展厅平面图', en: 'Floor plan' },
+  'minimap.close': { zh: '关闭地图', en: 'Close map' },
 };
 
 export function translate(lang: Lang, key: string): string {
