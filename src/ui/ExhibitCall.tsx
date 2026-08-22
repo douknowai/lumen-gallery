@@ -16,8 +16,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PhoneOff, Maximize2, Minimize2, AudioLines, Mic, Volume2 } from 'lucide-react';
 import { useStore, selectCallExhibit } from '@/state/store';
-import { narrate, asr, tts, chatStream, type AiExhibitBrief, type ChatMessage } from '@/lib/ai';
+import { narrate, asr, chatStream, ttsSegments, loadChatHistory, saveChatHistory, type AiExhibitBrief, type ChatMessage, type TtsSegment } from '@/lib/ai';
 import { encodeAudioToBase64Wav } from '@/lib/encodeWav';
+import { useI18n } from '@/lib/i18n';
 
 interface Transcript {
   role: 'user' | 'assistant';
@@ -104,6 +105,7 @@ export default function ExhibitCall() {
   const closeCall = useStore((s) => s.closeCall);
   
   const isMobile = useStore((s) => s.isMobile);
+  const { lang, t } = useI18n();
 
   const [transcript, setTranscript] = useState<Transcript[]>([]);
   const [streaming, setStreaming] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export default function ExhibitCall() {
   const pressedRef = useRef(false);
   const aliveRef = useRef(true);
   const playingRef = useRef(false);
+  const stopTokenRef = useRef(0);
   const inAsrRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const vadRef = useRef<VadRef>(createVadRef());
@@ -133,6 +136,7 @@ export default function ExhibitCall() {
 
   /* ---------- 基础资源控制 ---------- */
   const stopAudioInternal = useCallback(() => {
+    stopTokenRef.current += 1;
     const a = sharedAudio;
     if (a) {
       a.pause();
@@ -193,6 +197,17 @@ export default function ExhibitCall() {
     });
   }, []);
 
+  const playSegments = useCallback(
+    async (segments: TtsSegment[]): Promise<void> => {
+      const token = stopTokenRef.current;
+      for (const seg of segments) {
+        if (!aliveRef.current || token !== stopTokenRef.current) return;
+        await playAudio(seg.audioUri);
+      }
+    },
+    [playAudio],
+  );
+
   const toBrief = useCallback(
     (): AiExhibitBrief => ({
       title: exhibit?.title ?? '这件作品',
@@ -201,6 +216,7 @@ export default function ExhibitCall() {
       year: exhibit?.year,
       medium: exhibit?.medium,
       description: exhibit?.description ?? '',
+      src: exhibit?.type === 'image' ? exhibit.src : undefined,
     }),
     [exhibit],
   );
@@ -212,6 +228,7 @@ export default function ExhibitCall() {
       stopAudioInternal();
       setTranscript((prev) => [...prev, { role: 'user', content: text }]);
       historyRef.current.push({ role: 'user', content: text });
+      saveChatHistory(exhibit?.id ?? '', historyRef.current);
 
       setStreaming('');
       setBusy('llm');
@@ -229,12 +246,13 @@ export default function ExhibitCall() {
         const finalText = full.trim() || '（我一时没想好怎么回应，换个问法试试？）';
         historyRef.current.push({ role: 'assistant', content: finalText });
         setTranscript((prev) => [...prev, { role: 'assistant', content: finalText }]);
+        saveChatHistory(exhibit?.id ?? '', historyRef.current);
         setStreaming(null);
 
         setBusy('tts');
-        const { audioUri } = await tts(finalText, voiceId);
+        const segments = await ttsSegments(finalText, voiceId);
         if (!aliveRef.current) return;
-        await playAudio(audioUri);
+        await playSegments(segments);
       } catch (err) {
         if (!aliveRef.current) return;
         setStreaming(null);
@@ -243,7 +261,7 @@ export default function ExhibitCall() {
         if (aliveRef.current) setBusy(null);
       }
     },
-    [stopAudioInternal, playAudio, toBrief, voiceId],
+    [stopAudioInternal, playAudio, playSegments, toBrief, voiceId, exhibit],
   );
 
   /* ---------- 一段音频 → ASR → 对话 ---------- */
@@ -524,17 +542,21 @@ export default function ExhibitCall() {
     setBusy('narrate');
     setError(null);
     try {
-      const { text, audioUri } = await narrate(toBrief(), voiceId);
+      const { text } = await narrate(toBrief(), voiceId);
       if (!aliveRef.current) return;
       setTranscript((prev) => [...prev, { role: 'assistant', content: text }]);
       historyRef.current.push({ role: 'assistant', content: text });
-      await playAudio(audioUri);
+      saveChatHistory(exhibit?.id ?? '', historyRef.current);
+      setBusy('tts');
+      const segments = await ttsSegments(text, voiceId);
+      if (!aliveRef.current) return;
+      await playSegments(segments);
     } catch (err) {
       if (aliveRef.current) setError(err instanceof Error ? err.message : '讲解生成失败，请重试');
     } finally {
       if (aliveRef.current) setBusy(null);
     }
-  }, [isBusy, exhibit, stopAudioInternal, playAudio, toBrief, voiceId]);
+  }, [isBusy, exhibit, stopAudioInternal, playSegments, toBrief, voiceId]);
 
   /* ---------- 挂断 / 折叠 ---------- */
   const handleEndCall = useCallback(() => {
@@ -547,6 +569,16 @@ export default function ExhibitCall() {
   const handleCollapse = useCallback(() => {
     collapseCall();
   }, [collapseCall]);
+
+  /* ---------- 挂载：载入该展品历史对话 ---------- */
+  useEffect(() => {
+    if (!exhibit?.id) return;
+    const saved = loadChatHistory(exhibit.id);
+    if (saved.length) {
+      historyRef.current = saved;
+      setTranscript(saved.map((m) => ({ role: m.role, content: m.content })));
+    }
+  }, [exhibit?.id]);
 
   /* ---------- 挂载：重置存活标记；卸载清理（免提改为手动开启，不再自动监听） ---------- */
   useEffect(() => {
@@ -606,29 +638,29 @@ export default function ExhibitCall() {
   const assistantLine =
     recording || busy === 'asr'
       ? recording
-        ? '正在聆听…'
-        : '正在识别语音…'
+        ? t('call.listening')
+        : t('call.recognizing')
       : busy === 'narrate'
-        ? '正在撰写讲解词…'
+        ? t('call.writing')
         : busy === 'llm'
           ? (streaming ?? '…')
           : busy === 'tts'
             ? (lastAssistant ?? '')
-            : (lastAssistant ?? (callMode === 'vad' ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击空格或上方按钮开启') : '按住空格或上方按钮说话'));
+            : (lastAssistant ?? (callMode === 'vad' ? (vadActive ? t('call.vadOnHint') : t('call.vadOffHint')) : t('call.pushHint')));
 
   const statusText = recording
-    ? '正在聆听…'
+    ? t('call.listening')
     : busy === 'narrate'
-      ? '正在撰写讲解词…'
+      ? t('call.writing')
       : busy === 'asr'
-        ? '正在识别语音…'
+        ? t('call.recognizing')
         : busy === 'llm'
-          ? '正在思考…'
+          ? t('call.thinking')
           : busy === 'tts'
-            ? '正在播报…'
+            ? t('call.speaking')
             : callMode === 'vad'
-              ? (vadActive ? '免提聆听中，直接开口说话' : '免提已关闭，点击空格或下方按钮开启')
-              : '按住说话（空格键或下方按钮）';
+              ? (vadActive ? t('call.vadOnHint') : t('call.vadOffHint'))
+              : t('call.pushMode');
 
   return (
     <>
@@ -645,7 +677,7 @@ export default function ExhibitCall() {
             className="max-w-[min(680px,92vw)] rounded-full px-3.5 py-1 text-[12.5px]"
             style={{ background: 'rgba(20,18,15,.55)', color: 'rgba(244,241,234,.8)' }}
           >
-            你：{lastUser}
+            {t('call.you')}：{lastUser}
           </div>
         )}
         <div
@@ -691,7 +723,7 @@ export default function ExhibitCall() {
                   disabled={isBusy && !recording}
                   className="flex h-11 w-11 select-none items-center justify-center rounded-full disabled:opacity-50"
                   style={{ touchAction: 'none', background: recording ? '#a63d2f' : 'var(--brass)', color: 'var(--paper)' }}
-                  aria-label="按住说话（空格）"
+                  aria-label={t('call.pressToTalk')}
                 >
                   <Mic size={20} strokeWidth={1.5} />
                 </motion.button>
@@ -701,8 +733,8 @@ export default function ExhibitCall() {
                   onClick={toggleVad}
                   className="flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-95"
                   style={{ background: vadActive ? 'var(--brass)' : 'var(--paper-dim)', color: recording ? '#a63d2f' : vadActive ? 'var(--paper)' : 'var(--stone)' }}
-                  title={vadActive ? '免提聆听中，点击关闭' : '点击开启免提'}
-                  aria-label={vadActive ? '关闭免提' : '开启免提'}
+                  title={vadActive ? t('call.toggleVadOff') : t('call.toggleVadOn')}
+                  aria-label={vadActive ? t('call.toggleVadOff') : t('call.toggleVadOn')}
                 >
                   <span className="relative">
                     <AudioLines size={20} strokeWidth={1.5} />
@@ -717,8 +749,8 @@ export default function ExhibitCall() {
                 type="button"
                 onClick={expandCall}
                 className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[var(--paper-dim)]"
-                title="展开对话（查看完整记录）"
-                aria-label="展开对话"
+                title={t('call.expand')}
+                aria-label={t('call.expand')}
               >
                 <Maximize2 size={18} strokeWidth={1.5} style={{ color: 'var(--ink)' }} />
               </button>
@@ -727,8 +759,8 @@ export default function ExhibitCall() {
                 type="button"
                 onClick={handleEndCall}
                 className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[#f6e3df]"
-                title="挂断通话"
-                aria-label="挂断通话"
+                title={t('call.hangup')}
+                aria-label={t('call.hangup')}
               >
                 <PhoneOff size={18} strokeWidth={1.5} style={{ color: '#a63d2f' }} />
               </button>
@@ -770,24 +802,24 @@ export default function ExhibitCall() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-serif-lumen text-[15px] font-medium" style={{ color: 'var(--ink)' }}>
-                    与「{exhibit.title}」语音对话
+                    {lang === 'zh' ? `与「${exhibit.title}」语音对话` : `Talking with "${exhibit.title}"`}
                   </div>
                   <div className="mt-0.5 font-mono-lumen text-[11px] uppercase tracking-[0.12em]" style={{ color: 'var(--stone)' }}>
-                    {exhibit.artist || 'AI 讲解'}
+                    {exhibit.artist || (lang === 'zh' ? 'AI 讲解' : 'AI Guide')}
                   </div>
                 </div>
                 <button
                   type="button"
-                  aria-label="折叠通话"
+                  aria-label={t('call.collapse')}
                   onClick={handleCollapse}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[var(--paper-dim)]"
-                  title="折叠（边走动边对话）"
+                  title={t('call.collapse')}
                 >
                   <Minimize2 size={18} strokeWidth={1.5} style={{ color: 'var(--ink)' }} />
                 </button>
                 <button
                   type="button"
-                  aria-label="挂断通话"
+                  aria-label={t('call.hangup')}
                   onClick={handleEndCall}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[#f6e3df]"
                 >

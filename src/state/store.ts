@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import type { ExhibitsData, Exhibit, CharactersData } from '@/config/schema';
 import { DEFAULT_VOICE_ID } from '@/config/voices';
+import type { Lang } from '@/lib/i18n';
 
 export type AppState =
   | 'loading'
@@ -33,6 +34,8 @@ const AI_STORAGE_KEY = 'lumen.ai';
 const VOICE_STORAGE_KEY = 'lumen.voice';
 /** 通话输入模式持久化 key */
 const CALL_MODE_STORAGE_KEY = 'lumen.callmode';
+/** 界面语言持久化 key */
+const LANG_STORAGE_KEY = 'lumen.lang';
 
 /** 启动时读取本地记忆的角色 id（校验在数据加载后由 useGalleryLoader 完成） */
 function readSavedCharacterId(): string | null {
@@ -71,6 +74,16 @@ function readSavedCallMode(): CallMode {
     return window.localStorage.getItem(CALL_MODE_STORAGE_KEY) === 'vad' ? 'vad' : 'push';
   } catch {
     return 'push';
+  }
+}
+
+/** 启动时读取界面语言（默认中文） */
+function readSavedLang(): Lang {
+  if (typeof window === 'undefined') return 'zh';
+  try {
+    return window.localStorage.getItem(LANG_STORAGE_KEY) === 'en' ? 'en' : 'zh';
+  } catch {
+    return 'zh';
   }
 }
 
@@ -116,6 +129,10 @@ export interface Store {
   callMode: CallMode;
   /** 首次进入提示（横屏建议 / Esc 提示） */
   dismissedHints: string[];
+  /** 界面语言（持久化 localStorage，默认中文） */
+  lang: Lang;
+  /** 导览员面板是否打开（独立覆盖层，不影响 3D 走动） */
+  guideOpen: boolean;
 
   setData: (d: ExhibitsData) => void;
   setCharacters: (c: CharactersData) => void;
@@ -158,6 +175,10 @@ export interface Store {
   expandCall: () => void;
   closeCall: () => void;
   dismissHint: (key: string) => void;
+  setLang: (l: Lang) => void;
+  openGuide: () => void;
+  closeGuide: () => void;
+  toggleGuide: () => void;
   /** Esc 逐层返回：lightbox > modal > help > explore */
   escape: () => void;
 }
@@ -184,6 +205,8 @@ export const useStore = create<Store>((set, get) => ({
   callCollapsed: false,
   callMode: readSavedCallMode(),
   dismissedHints: [],
+  lang: readSavedLang(),
+  guideOpen: false,
 
   setData: (d) => set({ data: d }),
   setCharacters: (c) => set({ characters: c }),
@@ -272,8 +295,20 @@ export const useStore = create<Store>((set, get) => ({
     set((s) => (s.callExhibitId ? { callCollapsed: false, appState: 'modal', modalId: s.callExhibitId } : s)),
   closeCall: () => set({ callExhibitId: null, callCollapsed: false, appState: 'explore', modalId: null }),
   dismissHint: (key) => set((s) => ({ dismissedHints: [...s.dismissedHints, key] })),
+  setLang: (l) => {
+    try {
+      window.localStorage.setItem(LANG_STORAGE_KEY, l);
+    } catch {
+      /* 隐私模式等场景忽略 */
+    }
+    set({ lang: l });
+  },
+  openGuide: () => set({ guideOpen: true }),
+  closeGuide: () => set({ guideOpen: false }),
+  toggleGuide: () => set((s) => ({ guideOpen: !s.guideOpen })),
   escape: () => {
     const s = get();
+    if (s.guideOpen) return s.closeGuide();
     if (s.appState === 'lightbox') s.closeLightbox();
     else if (s.appState === 'modal' && s.callExhibitId && !s.callCollapsed) s.collapseCall();
     else if (s.appState === 'modal') s.closeModal();

@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ZoomIn, ExternalLink, AudioLines } from 'lucide-react';
 import { useStore, selectModalExhibit } from '@/state/store';
+import { useI18n } from '@/lib/i18n';
 import { Button, MetaRow } from './primitives';
 import { assetUrl } from '@/utils/asset';
 
@@ -19,6 +20,7 @@ export default function ExhibitModal() {
   const aiEnabled = useStore((s) => s.aiEnabled);
   const openCall = useStore((s) => s.openCall);
   const [half, setHalf] = useState(false);
+  const { t } = useI18n();
 
   const blocks = (key: string, children: React.ReactNode, i: number) => (
     <motion.div
@@ -72,7 +74,7 @@ export default function ExhibitModal() {
                   </span>
                   <button
                     type="button"
-                    aria-label="关闭"
+                    aria-label={t('exhibit.close')}
                     onClick={closeModal}
                     className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-[var(--paper-dim)]"
                   >
@@ -91,7 +93,7 @@ export default function ExhibitModal() {
                     className="group relative mt-4 block w-full overflow-hidden rounded-[10px]"
                     style={{ aspectRatio: '16/10', background: 'var(--paper-dim)' }}
                     onClick={() => openLightbox(assetUrl(exhibit.src))}
-                    aria-label="放大浏览"
+                    aria-label={t('exhibit.zoom')}
                   >
                     <img src={assetUrl(exhibit.src)} alt={exhibit.title} className="h-full w-full object-cover" />
                     <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full opacity-0 transition-opacity duration-200 group-hover:opacity-100" style={{ background: 'rgba(20,18,15,.7)', color: 'var(--paper)' }}>
@@ -136,10 +138,10 @@ export default function ExhibitModal() {
               {blocks(
                 'meta',
                 <div className="mt-3">
-                  <MetaRow label="作者" value={exhibit.artist} />
-                  <MetaRow label="年代" value={exhibit.year} />
-                  <MetaRow label="媒材" value={exhibit.medium} />
-                  <MetaRow label="来源" value={exhibit.credit} />
+                  <MetaRow label={t('exhibit.author')} value={exhibit.artist} />
+                  <MetaRow label={t('exhibit.year')} value={exhibit.year} />
+                  <MetaRow label={t('exhibit.medium')} value={exhibit.medium} />
+                  <MetaRow label={t('exhibit.credit')} value={exhibit.credit} />
                 </div>,
                 3,
               )}
@@ -154,7 +156,7 @@ export default function ExhibitModal() {
                   {exhibit.description}
                   {exhibit.type === 'model' && (
                     <span className="mt-2 block text-[13px]" style={{ color: 'var(--stone)' }}>
-                      （本展品为三维陈列，可关闭弹窗后环绕展台观看。）
+                      {t('exhibit.modelHint')}
                     </span>
                   )}
                 </p>,
@@ -168,22 +170,22 @@ export default function ExhibitModal() {
                   {aiEnabled && (
                     <Button variant="primary" onClick={openCall}>
                       <AudioLines size={16} strokeWidth={1.5} />
-                      AI 语音讲解
+                      {t('exhibit.aiGuide')}
                     </Button>
                   )}
                   {exhibit.type === 'image' && exhibit.src && (
                     <Button variant="primary" onClick={() => openLightbox(assetUrl(exhibit.src))}>
                       <ZoomIn size={16} strokeWidth={1.5} />
-                      放大浏览
+                      {t('exhibit.zoom')}
                     </Button>
                   )}
                   {exhibit.link && (
                     <Button onClick={() => window.open(exhibit.link, '_blank', 'noopener')}>
-                      {exhibit.type === 'link' ? '前往访问' : '查看来源'}
+                      {exhibit.type === 'link' ? t('exhibit.goVisit') : t('exhibit.viewSource')}
                       <ExternalLink size={14} strokeWidth={1.5} />
                     </Button>
                   )}
-                  <Button onClick={closeModal}>关闭</Button>
+                  <Button onClick={closeModal}>{t('exhibit.close')}</Button>
                 </div>,
                 6,
               )}
@@ -192,7 +194,7 @@ export default function ExhibitModal() {
               {blocks(
                 'footer',
                 <div className="mt-6 text-[12.5px]" style={{ color: 'var(--stone)' }}>
-                  素材许可见 ASSETS-LICENSE
+                  {t('exhibit.license')}
                 </div>,
                 7,
               )}

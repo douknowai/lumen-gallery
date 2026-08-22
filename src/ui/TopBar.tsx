@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { PersonStanding, Eye, HelpCircle, Maximize, Settings, AudioLines } from 'lucide-react';
 import { useStore } from '@/state/store';
 import { IconButton } from './primitives';
+import { useI18n } from '@/lib/i18n';
 
 export default function TopBar() {
   const cameraMode = useStore((s) => s.cameraMode);
@@ -15,6 +16,7 @@ export default function TopBar() {
   const appState = useStore((s) => s.appState);
   const aiEnabled = useStore((s) => s.aiEnabled);
   const toggleAi = useStore((s) => s.toggleAi);
+  const { lang, setLang, t } = useI18n();
   if (appState === 'modal' || appState === 'lightbox') {
     // 弹窗时顶栏保留可用（帮助/视角仍可切），不变
   }
@@ -40,7 +42,7 @@ export default function TopBar() {
         transition={{ type: 'spring', stiffness: 240, damping: 28, delay: 0.08 }}
       >
         <IconButton
-          title={cameraMode === 'third' ? '切换第一人称（V）' : '切换第三人称（V）'}
+          title={cameraMode === 'third' ? t('nav.firstPerson') : t('nav.thirdPerson')}
           onClick={toggleCameraMode}
           active={cameraMode === 'first'}
         >
@@ -56,7 +58,7 @@ export default function TopBar() {
         </IconButton>
         {showCharacters && (
           <IconButton
-            title="设置"
+            title={t('nav.settings')}
             onClick={toggleCharacters}
             active={appState === 'characters'}
           >
@@ -64,18 +66,26 @@ export default function TopBar() {
           </IconButton>
         )}
         <IconButton
-          title={aiEnabled ? '关闭 AI 语音讲解' : '开启 AI 语音讲解'}
+          title={aiEnabled ? t('nav.aiOff') : t('nav.aiOn')}
           onClick={toggleAi}
           active={aiEnabled}
         >
           <AudioLines size={20} strokeWidth={1.5} />
         </IconButton>
-        <IconButton title="帮助（H）" onClick={toggleHelp}>
+        <IconButton
+          title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
+          onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+        >
+          <span className="font-mono-lumen text-[11px] font-medium tracking-wider">
+            {lang === 'zh' ? 'EN' : '中'}
+          </span>
+        </IconButton>
+        <IconButton title={t('nav.help')} onClick={toggleHelp}>
           <HelpCircle size={20} strokeWidth={1.5} />
         </IconButton>
         {!isMobile && (
           <IconButton
-            title="全屏（F）"
+            title={t('nav.fullscreen')}
             onClick={() => {
               if (document.fullscreenElement) void document.exitFullscreen();
               else void document.documentElement.requestFullscreen();

@@ -1,9 +1,10 @@
 /**
  * api.mjs — LUMEN「AI 语音讲解」后端（纯 JS / ESM）
  *
- * 提供 4 个接口，全部基于 coze-coding-dev-sdk（仅允许在后端调用）：
- *   POST /api/ai/narrate  展品口播介绍（LLM 生成口播稿 → TTS 合成）
+ * 提供 5 个接口，全部基于 coze-coding-dev-sdk（仅允许在后端调用）：
+ *   POST /api/ai/narrate  展品口播介绍（LLM 生成口播稿，图片类展品支持多模态看图）
  *   POST /api/ai/chat     与展品对话（LLM 流式，SSE 返回）
+ *   POST /api/ai/guide    全馆导览员对话（LLM 流式，SSE 返回，注入展品清单）
  *   POST /api/ai/tts      文本转语音
  *   POST /api/ai/asr      语音识别（base64 或 URL）
  *
@@ -16,6 +17,8 @@
  * - 对话采用 SSE 流式（打字机体验），口播/ TTS / ASR 为一次性结果。
  */
 import { LLMClient, TTSClient, ASRClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const DEFAULT_UID = 'lumen-visitor';
 const MAX_BODY_BYTES = 15 * 1024 * 1024; // 15MB（容纳录音 base64）
@@ -31,6 +34,34 @@ function extractText(content) {
     return content.map((p) => (p && typeof p.text === 'string' ? p.text : '')).join('');
   }
   return content ? String(content) : '';
+}
+
+/** 可做「看图讲解」的图片扩展名 */
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
+
+function imageMime(src) {
+  if (/\.png$/i.test(src)) return 'image/png';
+  if (/\.webp$/i.test(src)) return 'image/webp';
+  if (/\.gif$/i.test(src)) return 'image/gif';
+  return 'image/jpeg';
+}
+
+/**
+ * 读取展品图片并转 base64 data URI，供多模态 LLM 看图。
+ * 仅当 src 是图片、且文件真实存在于 public 目录时才返回，否则返回 null（回退纯文本讲解）。
+ */
+function loadExhibitImageDataUri(exhibit) {
+  const src = exhibit?.src;
+  if (typeof src !== 'string' || !IMAGE_EXT_RE.test(src)) return null;
+  try {
+    const rel = src.startsWith('/') ? src.slice(1) : src;
+    const filePath = path.join(process.cwd(), 'public', rel);
+    const buf = fs.readFileSync(filePath);
+    if (buf.length === 0 || buf.length > 8 * 1024 * 1024) return null; // 超 8MB 放弃看图
+    return `data:${imageMime(src)};base64,${buf.toString('base64')}`;
+  } catch {
+    return null;
+  }
 }
 
 /** 读取并解析 JSON 请求体（带大小上限与中文错误提示） */
@@ -152,6 +183,39 @@ function buildMessages(systemPrompt, message, history) {
   return messages;
 }
 
+/** 把展品摘要列表整理成给导览员的事实底座（纯文本） */
+function guideCatalogText(catalog) {
+  if (!Array.isArray(catalog) || catalog.length === 0) return '（暂无展品信息）';
+  return catalog
+    .map((it, i) => {
+      if (!it) return '';
+      const title = it.title || it.titleEn || '未命名作品';
+      const artist = it.artist ? `，艺术家 ${it.artist}` : '';
+      const zone = it.zoneName || it.zone || '';
+      const type = it.type ? `，类型 ${it.type}` : '';
+      const desc = it.description ? `，简介：${it.description}` : '';
+      return `${i + 1}. 《${title}》${artist}${zone ? `，位于「${zone}」` : ''}${type}${desc}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+function guideSystemPrompt(catalogText) {
+  return `你是 LUMEN「流明」3D 虚拟美术馆的官方导览员，正在为观众提供参观帮助。
+
+你可以回答观众关于展馆、展品、参观路线、推荐的问题，帮他们规划参观顺序、讲解展品亮点。
+
+请严格依据下面提供的展品清单作答：
+1. 只介绍清单里真实存在的作品，不要编造不存在的展品、艺术家或数据；
+2. 观众问「最值得看什么」「怎么参观」「有哪些作品」时，给出 2～4 件推荐并说明理由；
+3. 推荐展品时可以点名它所在的展厅，方便观众前往；
+4. 用简洁、自然、口语化的中文，一般控制在 2～5 句话内；
+5. 不要使用 Markdown 列表、编号或表情符号，直接说人话。
+
+【展品清单】
+${catalogText}`;
+}
+
 /* ------------------------------------------------------------------ */
 /* 各接口实现                                                           */
 /* ------------------------------------------------------------------ */
@@ -164,23 +228,31 @@ async function handleNarrate(req, res, body, customHeaders) {
 
   const config = new Config();
   const llm = new LLMClient(config, customHeaders);
-  const tts = new TTSClient(config, customHeaders);
 
-  const messages = [{ role: 'system', content: narrateSystemPrompt(exhibit) }, { role: 'user', content: '请介绍一下你自己吧。' }];
-  const reply = await llm.invoke(messages, { temperature: 0.75 });
+  // 看图讲解：展品若是图片，尝试读取本地文件转 data URI，让多模态模型真正「看到」作品
+  const imageDataUri = loadExhibitImageDataUri(exhibit);
+  const userContent = imageDataUri
+    ? [
+        { type: 'text', text: '请看着这幅作品，结合我提供的事实信息，用第一人称介绍你自己吧。' },
+        { type: 'image_url', image_url: { url: imageDataUri, detail: 'high' } },
+      ]
+    : '请介绍一下你自己吧。';
+
+  const messages = [
+    { role: 'system', content: narrateSystemPrompt(exhibit) },
+    { role: 'user', content: userContent },
+  ];
+
+  const llmConfig = { temperature: 0.75 };
+  if (imageDataUri) llmConfig.model = 'doubao-seed-1-8-251228'; // 多模态模型
+
+  const reply = await llm.invoke(messages, llmConfig);
   const text = (reply?.content || '').trim();
 
   if (!text) return sendError(res, 502, '口播稿生成失败');
 
-  const voice = await tts.synthesize({
-    uid: body?.uid || DEFAULT_UID,
-    text,
-    speaker: typeof body?.speaker === 'string' && body.speaker ? body.speaker : undefined,
-  });
-
-  if (!voice?.audioUri) return sendError(res, 502, '语音合成失败');
-
-  sendJson(res, 200, { text, audioUri: voice.audioUri, audioSize: voice.audioSize });
+  // 只返回口播稿；语音合成改由前端「分句分段 + 队列播放」完成（准流式，降低首播等待）
+  sendJson(res, 200, { text, imageEnhanced: Boolean(imageDataUri) });
 }
 
 async function handleChat(req, res, body, customHeaders) {
@@ -261,6 +333,40 @@ async function handleASR(req, res, body, customHeaders) {
   sendJson(res, 200, { text: result.text, duration: result.duration });
 }
 
+async function handleGuide(req, res, body, customHeaders) {
+  const catalog = body?.catalog;
+  const message = body?.message;
+  const history = body?.history;
+
+  if (!message && !history?.length) {
+    return sendError(res, 400, '缺少对话内容');
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const config = new Config();
+  const llm = new LLMClient(config, customHeaders);
+
+  try {
+    const messages = buildMessages(guideSystemPrompt(guideCatalogText(catalog)), message, history);
+    const stream = llm.stream(messages, { temperature: 0.7 });
+    for await (const chunk of stream) {
+      const text = extractText(chunk?.content);
+      if (text) writeSSE(res, { type: 'delta', content: text });
+    }
+    writeSSE(res, { type: 'done' });
+  } catch (err) {
+    writeSSE(res, { type: 'error', message: err?.message || '导览生成失败' });
+  } finally {
+    res.end();
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* 请求分发（被 server.js 与 vite 中间件共同调用）                       */
 /* ------------------------------------------------------------------ */
@@ -299,6 +405,7 @@ export async function handleApiRequest(req, res) {
     if (pathname.endsWith('/chat')) return await handleChat(req, res, body, customHeaders);
     if (pathname.endsWith('/tts')) return await handleTTS(req, res, body, customHeaders);
     if (pathname.endsWith('/asr')) return await handleASR(req, res, body, customHeaders);
+    if (pathname.endsWith('/guide')) return await handleGuide(req, res, body, customHeaders);
     return sendError(res, 404, '未知的 AI 接口');
   } catch (err) {
     return sendError(res, 500, err?.message || 'AI 服务调用失败');
