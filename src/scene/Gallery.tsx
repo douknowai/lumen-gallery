@@ -3,7 +3,7 @@
  * 雾（FogExp2 #F4F1EA，入场 0.02→0.008 缓动 2s）、Suspense、CSS 暗角、
  * 弹窗打开时降帧 30fps（frameloop="never" + 手动 advance 节流）。
  */
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { MAT, PERF } from '@/config/site';
@@ -19,7 +19,7 @@ import ExhibitRoot from './exhibits/ExhibitRoot';
 import GalleryLighting from './lighting/GalleryLighting';
 import Avatar from './Avatar';
 import CameraDirector from './cameras/CameraDirector';
-import { introFogDensity } from './cameras/IntroDolly';
+import { introFogDensity } from './cameras/introDollyMath';
 import PlayerController from '@/systems/PlayerController';
 import PointerLook from '@/systems/controls/PointerLook';
 import TouchControls from '@/systems/controls/TouchControls';
@@ -49,17 +49,11 @@ function FrameDriver() {
 
 /** 雾与背景（入场时雾密度 0.02→目标缓动 2s，像眼睛适应展厅） */
 function Atmosphere() {
-  const scene = useThree((s) => s.scene);
-  const fog = useMemo(() => new THREE.FogExp2(MAT.fog, 0.02), []);
+  const fogRef = useRef<THREE.FogExp2>(null);
   const t = useRef(0);
-  useEffect(() => {
-    scene.fog = fog;
-    scene.background = new THREE.Color(MAT.fog);
-    return () => {
-      scene.fog = null;
-    };
-  }, [scene, fog]);
   useFrame((_, dt) => {
+    const fog = fogRef.current;
+    if (!fog) return;
     const st = useStore.getState().appState;
     if (st === 'entering' && t.current < 2) {
       t.current += dt;
@@ -68,7 +62,12 @@ function Atmosphere() {
       fog.density = PERF.fogDensity;
     }
   });
-  return null;
+  return (
+    <>
+      <fogExp2 ref={fogRef} attach="fog" args={[MAT.fog, 0.02]} />
+      <color attach="background" args={[MAT.fog]} />
+    </>
+  );
 }
 
 /** 场景内容（数据就绪后渲染） */

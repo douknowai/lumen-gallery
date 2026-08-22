@@ -4,32 +4,44 @@
     {
       "id": "casual-man",
       "name": "阿澈",
+      "nameEn": "A-Che",
       "label": "休闲男观众",
+      "labelEn": "Casual Visitor",
       "desc": "灰 T 牛仔裤的典型逛展青年",
+      "descEn": "Typical gallery-goer in grey tee and jeans",
       "src": "/assets/characters/casual-man.glb",
       "height": 1.78
     },
     {
       "id": "casual-woman",
       "name": "小满",
+      "nameEn": "Xiaoman",
       "label": "休闲女观众",
+      "labelEn": "Casual Visitor",
       "desc": "白背心橘红裤的轻快参观者",
+      "descEn": "Light-footed visitor in tank top and orange trousers",
       "src": "/assets/characters/casual-woman.glb",
       "height": 1.70
     },
     {
       "id": "business-man",
       "name": "顾先生",
+      "nameEn": "Mr. Gu",
       "label": "商务正装",
+      "labelEn": "Business Attire",
       "desc": "西装领带，策展人/贵宾气质",
+      "descEn": "Suit and tie — a curator or VIP presence",
       "src": "/assets/characters/business-man.glb",
       "height": 1.80
     },
     {
       "id": "worker",
       "name": "老周",
+      "nameEn": "Lao Zhou",
       "label": "场馆工作人员",
+      "labelEn": "Museum Staff",
       "desc": "安全帽反光背心，布展运维风",
+      "descEn": "Hard hat and reflective vest — installation crew",
       "src": "/assets/characters/worker.glb",
       "height": 1.76
     }

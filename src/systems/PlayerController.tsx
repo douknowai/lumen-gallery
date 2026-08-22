@@ -16,7 +16,7 @@ import { resolveMove } from '@/systems/collision';
 import { zoneAt } from '@/systems/zones';
 import { computeFocus } from '@/systems/interaction';
 import { input } from '@/systems/controls/input';
-import { openExhibit, lastExhibitClickAt } from '@/scene/exhibits/ExhibitRoot';
+import { openExhibit } from '@/state/exhibitActions';
 
 export default function PlayerController() {
   const { camera, scene } = useThree();
@@ -76,8 +76,8 @@ export default function PlayerController() {
         const fz = Math.cos(yaw);
         const rx = -Math.cos(yaw);
         const rz = Math.sin(yaw);
-        let mx = (fx * iz + rx * ix) / Math.max(1, mag);
-        let mz = (fz * iz + rz * ix) / Math.max(1, mag);
+        const mx = (fx * iz + rx * ix) / Math.max(1, mag);
+        const mz = (fz * iz + rz * ix) / Math.max(1, mag);
         const running = k.has('ShiftLeft') || k.has('ShiftRight') || mag > 0.85;
         const speed = MOVE.walkSpeed * (running ? MOVE.runMultiplier : 1) * norm;
         const nx = playerRef.x + mx * speed * dt;
@@ -128,5 +128,3 @@ export default function PlayerController() {
 
   return null;
 }
-
-export { lastExhibitClickAt };

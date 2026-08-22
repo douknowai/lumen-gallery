@@ -150,8 +150,8 @@ const SANS = 'Manrope, "Noto Sans SC", "PingFang SC", sans-serif';
  * 博物馆标签（wall-frame 右下，14×9cm，Canvas 排版）：
  * mono 编号 / 衬线作品名 / 作者·年代（灰）。
  */
-export function labelTexture(e: Exhibit): THREE.CanvasTexture {
-  const key = `label-${e.id}`;
+export function labelTexture(e: Exhibit, lang: 'zh' | 'en' = 'zh'): THREE.CanvasTexture {
+  const key = `label-${e.id}-${lang}`;
   if (cache.has(key)) return cache.get(key)!;
   const w = 280;
   const h = 180;
@@ -169,7 +169,7 @@ export function labelTexture(e: Exhibit): THREE.CanvasTexture {
   ctx.fillText(e.id, 20, 18);
   ctx.fillStyle = '#221F1A';
   ctx.font = `600 26px ${SERIF}`;
-  ctx.fillText(clipText(ctx, e.title, w - 40), 20, 52);
+  ctx.fillText(clipText(ctx, lang === 'zh' ? e.title : (e.titleEn || e.title), w - 40), 20, 52);
   ctx.fillStyle = '#8A8375';
   ctx.font = `400 20px ${SANS}`;
   const sub = [e.artist, e.year].filter(Boolean).join(' · ');
@@ -221,8 +221,8 @@ function wrapText(
  * 信息面板纹理（text / link，1.2×0.9m 亚克力面板）：
  * 白底、衬线标题 + 无衬线正文自动换行；link 面板加黄铜描边 + 外链提示行。
  */
-export function panelTexture(e: Exhibit, accent: string): THREE.CanvasTexture {
-  const key = `panel-${e.id}`;
+export function panelTexture(e: Exhibit, accent: string, lang: 'zh' | 'en' = 'zh'): THREE.CanvasTexture {
+  const key = `panel-${e.id}-${lang}`;
   if (cache.has(key)) return cache.get(key)!;
   const w = 768;
   const h = 576;
@@ -244,19 +244,19 @@ export function panelTexture(e: Exhibit, accent: string): THREE.CanvasTexture {
 
   ctx.fillStyle = '#221F1A';
   ctx.font = `600 44px ${SERIF}`;
-  ctx.fillText(clipText(ctx, e.title, w - 96), 48, 84);
+  ctx.fillText(clipText(ctx, lang === 'zh' ? e.title : (e.titleEn || e.title), w - 96), 48, 84);
   // 黄铜短线
   ctx.fillStyle = accent;
   ctx.fillRect(48, 152, 96, 4);
 
   ctx.fillStyle = '#4A453B';
   ctx.font = `400 25px ${SANS}`;
-  wrapText(ctx, e.description, 48, 188, w - 96, 44, 7);
+  wrapText(ctx, lang === 'zh' ? e.description : (e.descriptionEn || e.description), 48, 188, w - 96, 44, 7);
 
   if (isLink) {
     ctx.fillStyle = '#A67C3D';
     ctx.font = `600 26px ${SANS}`;
-    ctx.fillText('点击访问 ↗', 48, h - 72);
+    ctx.fillText(lang === 'zh' ? '点击访问 ↗' : 'Visit ↗', 48, h - 72);
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -266,8 +266,8 @@ export function panelTexture(e: Exhibit, accent: string): THREE.CanvasTexture {
 }
 
 /** 标题墙纹理（序厅北墙左段）：中文标题 + 英文 mono + 黄铜细线 */
-export function titleWallTexture(title: string, titleEn: string, accent: string): THREE.CanvasTexture {
-  const key = `title-${title}`;
+export function titleWallTexture(title: string, titleEn: string, accent: string, lang: 'zh' | 'en' = 'zh'): THREE.CanvasTexture {
+  const key = `title-${title}-${lang}`;
   if (cache.has(key)) return cache.get(key)!;
   const w = 1024;
   const h = 384;
@@ -279,12 +279,12 @@ export function titleWallTexture(title: string, titleEn: string, accent: string)
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#2A2723';
   ctx.font = `500 132px ${SERIF}`;
-  ctx.fillText(title, 8, 30);
+  ctx.fillText(lang === 'zh' ? title : (titleEn || title), 8, 30);
   ctx.fillStyle = accent;
   ctx.fillRect(10, 220, 320, 6);
   ctx.fillStyle = '#8A8375';
   ctx.font = `500 44px ${MONO}`;
-  ctx.fillText(titleEn.toUpperCase(), 10, 264);
+  ctx.fillText((lang === 'zh' ? titleEn : title).toUpperCase(), 10, 264);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;

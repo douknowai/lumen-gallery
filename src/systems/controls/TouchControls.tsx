@@ -10,7 +10,7 @@ import { useThree } from '@react-three/fiber';
 import { CAMERA } from '@/config/site';
 import { useStore, playerRef } from '@/state/store';
 import { input } from './input';
-import { clampFirstFov } from '@/scene/cameras/FirstPersonRig';
+import { clampFirstFov } from '@/scene/cameras/rigMath';
 
 const JOY_MAX = 48; // px
 const DEAD = 8; // 死区 px

@@ -12,7 +12,8 @@ import { labelTexture } from '@/scene/textures';
 import { useStore } from '@/state/store';
 
 export default function MuseumLabel({ exhibit, variant }: { exhibit: Exhibit; variant: 'wall' | 'floor' }) {
-  const tex = useMemo(() => labelTexture(exhibit), [exhibit]);
+  const lang = useStore((s) => s.lang);
+  const tex = useMemo(() => labelTexture(exhibit, lang), [exhibit, lang]);
   const matRef = useRef<THREE.MeshStandardMaterial>(null);
   const glow = useRef(0);
 

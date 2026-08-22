@@ -162,7 +162,6 @@ function CharacterBody({ char }: { char: Character }) {
       fadeK.current = Math.min(1, fadeK.current + dt / FADE_IN);
       const k = fadeK.current;
       // three.js 材质只能命令式修改（R3F 惯例），此处为逐帧淡入
-      // eslint-disable-next-line react-hooks/immutability
       for (const rec of fadeMats) rec.m.opacity = k;
       if (k >= 1) for (const rec of fadeMats) rec.m.transparent = rec.transparent; // 还原，避免长期透明排序开销
     }

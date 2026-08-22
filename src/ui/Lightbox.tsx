@@ -11,6 +11,13 @@ import { useI18n } from '@/lib/i18n';
 
 export default function Lightbox() {
   const src = useStore((s) => s.lightboxSrc);
+  // 用 key 驱动重挂载：切换展品时 zoom/pan/hint 自动重置，避免在 effect 中同步 setState
+  if (!src) return null;
+  return <LightboxContent key={src} />;
+}
+
+function LightboxContent() {
+  const src = useStore((s) => s.lightboxSrc)!;
   const closeLightbox = useStore((s) => s.closeLightbox);
   const exhibit = useStore(selectModalExhibit);
   const isMobile = useStore((s) => s.isMobile);
@@ -22,16 +29,11 @@ export default function Lightbox() {
   const pinch = useRef<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // 打开时重置 + 提示 3s 淡出
+  // 3s 后淡出缩放提示（异步回调内 setState，不属于同步 set-state-in-effect）
   useEffect(() => {
-    if (src) {
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-      setHintVisible(true);
-      const t = setTimeout(() => setHintVisible(false), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [src]);
+    const t = setTimeout(() => setHintVisible(false), 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   // 平移边界钳制（±10% 橡皮筋在松手时回弹——此处简化为硬钳制 + 松手归零多余部分）
   const clampPan = (x: number, y: number, z: number): { x: number; y: number } => {
@@ -48,7 +50,6 @@ export default function Lightbox() {
     setPan((p) => clampPan(p.x, p.y, z));
   };
 
-  if (!src) return null;
   return (
     <AnimatePresence>
       <motion.div

@@ -1,13 +1,12 @@
 /**
  * TrackRails.tsx — 通长黑色轨道（距墙 0.9m、距顶 0.15m，宽 4cm 哑光黑）。
- * 轨道清单同时被 ExhibitSpot 用作射灯挂载参考。
  */
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { MAT } from '@/config/site';
 
 /** [cx, y, cz, len, axis] 轴 'x' 沿东西、'z' 沿南北 */
-export const RAILS: [number, number, number, number, 'x' | 'z'][] = [
+const RAILS: [number, number, number, number, 'x' | 'z'][] = [
   [0, 5.85, -0.5, 2, 'x'],        // 中央展台上空 2m 短轨
   [-10.95, 5.85, 0, 13, 'z'],     // 序厅西墙（H-01）
   [10.95, 5.85, 0, 13, 'z'],      // 序厅东墙（H-02）

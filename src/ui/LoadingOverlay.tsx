@@ -8,7 +8,8 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import { useStore } from '@/state/store';
 
-const TIPS = ['正在悬挂画作…', '正在调试射灯…', '正在擦拭展柜玻璃…', '正在摆放导览册…'];
+const TIPS_ZH = ['正在悬挂画作…', '正在调试射灯…', '正在擦拭展柜玻璃…', '正在摆放导览册…'];
+const TIPS_EN = ['Hanging the paintings…', 'Focusing the spotlights…', 'Polishing the vitrine glass…', 'Arranging the brochures…'];
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 /** 标题字符级 stagger（≤20 字符，间隔 .03s） */
@@ -34,6 +35,8 @@ export default function LoadingOverlay() {
   const appState = useStore((s) => s.appState);
   const progress = useStore((s) => s.progress);
   const gallery = useStore((s) => s.data?.gallery);
+  const lang = useStore((s) => s.lang);
+  const tips = lang === 'zh' ? TIPS_ZH : TIPS_EN;
   const enterGallery = useStore((s) => s.enterGallery);
   const openCharacters = useStore((s) => s.openCharacters);
   const [smooth, setSmooth] = useState(0);
@@ -58,9 +61,9 @@ export default function LoadingOverlay() {
 
   // 小贴士 1.6s 轮换
   useEffect(() => {
-    const t = setInterval(() => setTipIdx((i) => (i + 1) % TIPS.length), 1600);
+    const t = setInterval(() => setTipIdx((i) => (i + 1) % tips.length), 1600);
     return () => clearInterval(t);
-  }, []);
+  }, [tips.length]);
 
   const ready = appState === 'ready';
   const onEnter = () => {
@@ -112,11 +115,11 @@ export default function LoadingOverlay() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.09, duration: 0.55, ease: EASE }}
           >
-            LUMEN <span className="ml-1">流明</span>
+            LUMEN {lang === 'zh' && <span className="ml-1">流明</span>}
           </motion.div>
           {/* 展览标题 */}
           <h1 className="font-serif-lumen mt-10 text-[40px] font-medium leading-[1.15] tracking-[0.01em]">
-            <StaggerTitle text={gallery?.title ?? '经典的回响'} />
+            <StaggerTitle text={lang === 'zh' ? (gallery?.title ?? '经典的回响') : (gallery?.titleEn ?? 'Echoes of the Masters')} />
           </h1>
           <motion.div
             className="font-mono-lumen mt-2 text-[11px] font-medium uppercase tracking-[0.14em]"
@@ -125,7 +128,7 @@ export default function LoadingOverlay() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.55 }}
           >
-            {gallery?.titleEn ?? 'Echoes of the Masters'}
+            {lang === 'zh' ? (gallery?.titleEn ?? 'Echoes of the Masters') : (gallery?.title ?? '经典的回响')}
           </motion.div>
           <motion.div
             className="mt-2 text-[12.5px]"
@@ -134,7 +137,7 @@ export default function LoadingOverlay() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.58, duration: 0.55 }}
           >
-            {gallery?.subtitle ?? '公共领域艺术数字展'}
+            {lang === 'zh' ? (gallery?.subtitle ?? '公共领域艺术数字展') : (gallery?.subtitleEn ?? 'A Digital Exhibition of Public Domain Art')}
           </motion.div>
           {/* 黄铜分隔线 */}
           <motion.div
@@ -176,7 +179,7 @@ export default function LoadingOverlay() {
                   animate={{ boxShadow: ['0 0 0 0 rgba(166,124,61,.12)', '0 0 0 4px rgba(166,124,61,.12)', '0 0 0 0 rgba(166,124,61,0)'] }}
                   transition={{ duration: 0.6 }}
                 >
-                  进入展厅 →
+                  {lang === 'zh' ? '进入展厅 →' : 'Enter the Gallery →'}
                 </motion.button>
                 {/* 设置入口（加载页先设置角色 / 音色 / 通话输入方式再进展厅） */}
                 <button
@@ -185,7 +188,7 @@ export default function LoadingOverlay() {
                   className="text-[12.5px] underline-offset-2 hover:underline"
                   style={{ color: 'var(--stone)' }}
                 >
-                  设置 →
+                  {lang === 'zh' ? '设置 →' : 'Settings →'}
                 </button>
               </div>
             )}
@@ -203,7 +206,7 @@ export default function LoadingOverlay() {
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {TIPS[tipIdx]}
+                  {tips[tipIdx]}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -216,7 +219,7 @@ export default function LoadingOverlay() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.9, duration: 0.55 }}
           >
-            桌面浏览器体验最佳 · 支持触屏 · 展品均来自公共领域开放馆藏
+            {lang === 'zh' ? '桌面浏览器体验最佳 · 支持触屏 · 展品均来自公共领域开放馆藏' : 'Best on desktop · Touch enabled · All works from public domain open collections'}
           </motion.div>
         </motion.div>
       )}

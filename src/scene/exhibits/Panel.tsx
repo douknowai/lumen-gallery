@@ -16,7 +16,8 @@ export default function Panel({ exhibit: e }: { exhibit: Exhibit }) {
   const accent = useStore((s) => s.data?.gallery.accent) ?? MAT.brass;
   const w = e.size?.w ?? 1.2;
   const h = e.size?.h ?? 0.9;
-  const tex = useMemo(() => panelTexture(e, accent), [e, accent]);
+  const lang = useStore((s) => s.lang);
+  const tex = useMemo(() => panelTexture(e, accent, lang), [e, accent, lang]);
   const rivetMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({

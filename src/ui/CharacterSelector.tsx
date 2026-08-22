@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { X, Check, PersonStanding, AudioLines, Mic } from 'lucide-react';
 import { useStore } from '@/state/store';
 import { VOICE_OPTIONS } from '@/config/voices';
+import { useI18n } from '@/lib/i18n';
 
 export default function CharacterSelector() {
   const characters = useStore((s) => s.characters);
@@ -19,6 +20,12 @@ export default function CharacterSelector() {
   const setCallMode = useStore((s) => s.setCallMode);
   const closeCharacters = useStore((s) => s.closeCharacters);
   const isMobile = useStore((s) => s.isMobile);
+  const { t, lang } = useI18n();
+
+  const inputModes = [
+    { id: 'push' as const, icon: Mic, name: t('settings.pushName'), label: t('settings.pushLabel'), desc: t('settings.pushDesc') },
+    { id: 'vad' as const, icon: AudioLines, name: t('settings.vadName'), label: t('settings.vadLabel'), desc: t('settings.vadDesc') },
+  ];
 
   const currentId = characterId ?? characters?.default;
 
@@ -49,10 +56,10 @@ export default function CharacterSelector() {
         transition={{ type: 'spring', stiffness: 260, damping: 30 }}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-serif-lumen text-[22px] font-medium">设置</h2>
+          <h2 className="font-serif-lumen text-[22px] font-medium">{t('settings.title')}</h2>
           <button
             type="button"
-            aria-label="关闭设置"
+            aria-label={t('settings.close')}
             onClick={closeCharacters}
             className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-[var(--paper-dim)]"
           >
@@ -88,13 +95,13 @@ export default function CharacterSelector() {
                 </span>
                 <span className="min-w-0">
                   <span className="flex items-baseline gap-2">
-                    <span className="font-serif-lumen text-[16px] font-medium">{c.name}</span>
+                    <span className="font-serif-lumen text-[16px] font-medium">{lang === 'zh' ? c.name : c.nameEn ?? c.name}</span>
                     <span className="text-[12px]" style={{ color: 'var(--stone)' }}>
-                      {c.label}
+                      {lang === 'zh' ? c.label : c.labelEn ?? c.label}
                     </span>
                   </span>
                   <span className="mt-1 block text-[12.5px] leading-[1.6]" style={{ color: 'var(--ink-60)' }}>
-                    {c.desc}
+                    {lang === 'zh' ? c.desc : c.descEn ?? c.desc}
                   </span>
                 </span>
                 {selected && (
@@ -114,7 +121,7 @@ export default function CharacterSelector() {
         <div className="mt-6">
           <div className="mb-3 flex items-center gap-2">
             <AudioLines size={16} strokeWidth={1.5} style={{ color: 'var(--brass)' }} />
-            <h3 className="font-serif-lumen text-[15px] font-medium">讲解音色</h3>
+            <h3 className="font-serif-lumen text-[15px] font-medium">{t('settings.voice')}</h3>
             <span className="font-mono-lumen text-[11px] uppercase tracking-[0.1em]" style={{ color: 'var(--stone)' }}>
               AI Voice
             </span>
@@ -137,11 +144,11 @@ export default function CharacterSelector() {
                     <span className="flex items-baseline gap-1.5">
                       <span className="font-serif-lumen text-[15px] font-medium">{v.name}</span>
                       <span className="text-[11.5px]" style={{ color: 'var(--stone)' }}>
-                        {v.label}
+                        {lang === 'zh' ? v.label : v.labelEn ?? v.label}
                       </span>
                     </span>
                     <span className="mt-0.5 block truncate text-[12px]" style={{ color: 'var(--ink-60)' }}>
-                      {v.desc}
+                      {lang === 'zh' ? v.desc : v.descEn ?? v.desc}
                     </span>
                   </span>
                   {selected && (
@@ -162,18 +169,13 @@ export default function CharacterSelector() {
         <div className="mt-6">
           <div className="mb-3 flex items-center gap-2">
             <Mic size={16} strokeWidth={1.5} style={{ color: 'var(--brass)' }} />
-            <h3 className="font-serif-lumen text-[15px] font-medium">通话输入方式</h3>
+            <h3 className="font-serif-lumen text-[15px] font-medium">{t('settings.input')}</h3>
             <span className="font-mono-lumen text-[11px] uppercase tracking-[0.1em]" style={{ color: 'var(--stone)' }}>
               Input
             </span>
           </div>
           <div className={isMobile ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-2 gap-2.5'}>
-            {(
-              [
-                { id: 'push', icon: Mic, name: '按住说话', label: '推荐', desc: '按住麦克风或空格说话，可控不误触' },
-                { id: 'vad', icon: AudioLines, name: '免提自动', label: '进阶', desc: '自动检测停顿断句，无需按键' },
-              ] as const
-            ).map((opt) => {
+            {inputModes.map((opt) => {
               const selected = opt.id === callMode;
               const Icon = opt.icon;
               return (
@@ -222,7 +224,7 @@ export default function CharacterSelector() {
         </div>
 
         <div className="mt-5 text-center text-[12.5px]" style={{ color: 'var(--stone)' }}>
-          角色模型：Quaternius（Public Domain / CC0）· 按 Esc 或点击空白处关闭
+          {t('settings.footer')}
         </div>
       </motion.div>
     </motion.div>

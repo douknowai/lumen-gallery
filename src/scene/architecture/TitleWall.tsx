@@ -11,10 +11,11 @@ import { useStore } from '@/state/store';
 
 export default function TitleWall() {
   const gallery = useStore((s) => s.data?.gallery);
+  const lang = useStore((s) => s.lang);
   const accent = gallery?.accent ?? '#A67C3D';
   const tex = useMemo(
-    () => (gallery ? titleWallTexture(gallery.title, gallery.titleEn ?? '', accent) : null),
-    [gallery, accent],
+    () => (gallery ? titleWallTexture(gallery.title, gallery.titleEn ?? '', accent, lang) : null),
+    [gallery, accent, lang],
   );
   const lineRef = useRef<THREE.Mesh>(null);
   const t = useRef<number | null>(null);

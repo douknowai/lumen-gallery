@@ -24,13 +24,14 @@ export default function GuideAssistant() {
   const appState = useStore((s) => s.appState);
   const { t } = useI18n();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const initialMessages = useMemo(() => loadGuideHistory(), []);
+  const historyRef = useRef<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const historyRef = useRef<ChatMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -49,13 +50,6 @@ export default function GuideAssistant() {
       description: e.description,
     }));
   }, [data]);
-
-  /* 载入导览员历史 */
-  useEffect(() => {
-    const saved = loadGuideHistory();
-    historyRef.current = saved;
-    setMessages(saved);
-  }, []);
 
   /* 新消息滚动到底部 */
   useEffect(() => {

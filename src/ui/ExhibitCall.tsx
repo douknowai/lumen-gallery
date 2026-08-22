@@ -12,7 +12,7 @@
  * 说明：SDK 的 ASR 为「一次性识别」接口，不含流式/VAD，故「免提自动断句」在浏览器端
  * 用 Web Audio API 的 AnalyserNode 做能量检测（近似 VAD），停顿超阈值自动切分送识别。
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PhoneOff, Maximize2, Minimize2, AudioLines, Mic, Volume2 } from 'lucide-react';
 import { useStore, selectCallExhibit } from '@/state/store';
@@ -107,7 +107,14 @@ export default function ExhibitCall() {
   const isMobile = useStore((s) => s.isMobile);
   const { lang, t } = useI18n();
 
-  const [transcript, setTranscript] = useState<Transcript[]>([]);
+  const initialHistory = useMemo(
+    () => (exhibit?.id ? loadChatHistory(exhibit.id) : []),
+    [exhibit],
+  );
+  const historyRef = useRef<ChatMessage[]>(initialHistory);
+  const [transcript, setTranscript] = useState<Transcript[]>(() =>
+    initialHistory.map((m) => ({ role: m.role, content: m.content })),
+  );
   const [streaming, setStreaming] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy>(null);
   const [recording, setRecording] = useState(false);
@@ -117,7 +124,6 @@ export default function ExhibitCall() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const historyRef = useRef<ChatMessage[]>([]);
   const pressedRef = useRef(false);
   const aliveRef = useRef(true);
   const playingRef = useRef(false);
@@ -569,16 +575,6 @@ export default function ExhibitCall() {
   const handleCollapse = useCallback(() => {
     collapseCall();
   }, [collapseCall]);
-
-  /* ---------- 挂载：载入该展品历史对话 ---------- */
-  useEffect(() => {
-    if (!exhibit?.id) return;
-    const saved = loadChatHistory(exhibit.id);
-    if (saved.length) {
-      historyRef.current = saved;
-      setTranscript(saved.map((m) => ({ role: m.role, content: m.content })));
-    }
-  }, [exhibit?.id]);
 
   /* ---------- 挂载：重置存活标记；卸载清理（免提改为手动开启，不再自动监听） ---------- */
   useEffect(() => {

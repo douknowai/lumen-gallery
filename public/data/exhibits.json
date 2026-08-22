@@ -3,7 +3,9 @@
     "title": "经典的回响",
     "titleEn": "Echoes of the Masters",
     "subtitle": "公共领域艺术数字展",
+    "subtitleEn": "A Digital Exhibition of Public Domain Art",
     "preface": "本展汇集已进入公共领域的艺术杰作：从维米尔的静谧窗光到葛饰北斋的巨浪，从梵高的麦田到修拉的点彩河岸。这些作品的原作分藏于大都会艺术博物馆等机构，其高清图像已以公共领域或 CC0 方式向全世界开放。我们希望用一座可以随时走进的浏览器展厅，让经典在数字空间中再次被看见、被走近、被凝视。请自由行走，靠近任何一件作品，灯光会为你亮起。",
+    "prefaceEn": "This exhibition brings together masterpieces that have entered the public domain: from Vermeer's tranquil window light to Hokusai's great wave, from Van Gogh's wheat fields to Seurat's pointillist riverbank. The originals are housed at The Met and other institutions, and their high-resolution images are now open to the world as public domain or CC0. Our hope is that this browser gallery — one you can step into at any moment — lets the classics be seen, approached, and looked upon once more in the digital space. Walk freely; approach any work and the light will find you.",
     "sound": false,
     "spawn": { "position": [0, 0, 5.2], "headingDeg": 180 },
     "accent": "#A67C3D"

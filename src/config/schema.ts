@@ -65,7 +65,9 @@ export const GalleryConfigSchema = z.object({
   title: z.string().min(1),
   titleEn: z.string().optional(),
   subtitle: z.string().optional(),
+  subtitleEn: z.string().optional(),
   preface: z.string().default(''),
+  prefaceEn: z.string().optional(),
   sound: z.boolean().default(false),
   spawn: z.object({
     position: z.tuple([z.number(), z.number(), z.number()]),
@@ -166,10 +168,16 @@ export const CharacterSchema = z.object({
   id: z.string().min(1),
   /** 显示名（选择器卡片主标题） */
   name: z.string().min(1),
+  /** 英文显示名 */
+  nameEn: z.string().optional(),
   /** 角色定位标签 */
   label: z.string().min(1),
+  /** 英文角色定位标签 */
+  labelEn: z.string().optional(),
   /** 一句话描述 */
   desc: z.string().default(''),
+  /** 英文一句话描述 */
+  descEn: z.string().optional(),
   /** GLB 路径 */
   src: z.string().min(1).nullable().default(null),
   /** 目标身高（米），加载后按实测包围盒等比缩放到该高度 */

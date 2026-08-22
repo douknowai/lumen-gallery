@@ -9,8 +9,7 @@
 import { useCallback } from 'react';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { Exhibit } from '@/config/schema';
-import { useStore, playerRef } from '@/state/store';
-import { computeViewSpot } from '@/systems/interaction';
+import { markExhibitClick, openExhibit } from '@/state/exhibitActions';
 import WallFrame from './WallFrame';
 import Pedestal from './Pedestal';
 import Vitrine from './Vitrine';
@@ -19,32 +18,13 @@ import Panel from './Panel';
 import FocusRing from '@/scene/FocusRing';
 import ExhibitSpot from '@/scene/lighting/ExhibitSpot';
 
-/** 记录最近一次展品点击时间（用于区分"点展品"与"点画布锁鼠标"） */
-export let lastExhibitClickAt = 0;
-
-/** 打开展品详情：请求观赏位运镜 + store 进入 modal 态 */
-export function openExhibit(e: Exhibit): void {
-  const st = useStore.getState();
-  if (st.appState !== 'explore') return;
-  const spot = computeViewSpot(e, playerRef.x, playerRef.z);
-  playerRef.focusMove = {
-    x: spot.x,
-    z: spot.z,
-    lookX: e.position[0],
-    lookY: e.position[1] || 1.2,
-    lookZ: e.position[2],
-    t: 0,
-  };
-  st.openModal(e.id);
-}
-
 export default function ExhibitRoot({ exhibit: e }: { exhibit: Exhibit }) {
   const rotY = ((e.rotationDeg ?? 0) * Math.PI) / 180;
 
   const onClick = useCallback(
     (ev: ThreeEvent<MouseEvent>) => {
       ev.stopPropagation();
-      lastExhibitClickAt = Date.now();
+      markExhibitClick();
       openExhibit(e);
     },
     [e],

@@ -68,3 +68,12 @@ export function firstPersonPose(px: number, pz: number, yaw: number, pitch: numb
   _look.copy(_eye).addScaledVector(d, 2.0);
   return makePose(_eye, _look, CAMERA.first.fov);
 }
+
+/** 第一人称滚轮/捏合 FOV 微调边界（70±6） */
+export const FIRST_FOV_MIN = CAMERA.first.fov - 6;
+export const FIRST_FOV_MAX = CAMERA.first.fov + 6;
+
+/** 夹取第一人称 FOV 到允许范围 */
+export function clampFirstFov(fov: number): number {
+  return Math.min(FIRST_FOV_MAX, Math.max(FIRST_FOV_MIN, fov));
+}

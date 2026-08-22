@@ -9,15 +9,19 @@ export interface VoiceOption {
   name: string;
   /** 定位标签（男声/女声） */
   label: string;
+  /** 英文定位标签 */
+  labelEn?: string;
   /** 一句话描述音色气质 */
   desc: string;
+  /** 英文气质描述 */
+  descEn?: string;
 }
 
 export const VOICE_OPTIONS: VoiceOption[] = [
-  { id: 'zh_female_xiaohe_uranus_bigtts', name: '小荷', label: '女声', desc: '柔和自然，通用导览' },
-  { id: 'saturn_zh_female_cancan_tob', name: '灿灿', label: '女声', desc: '知性清晰，娓娓道来' },
-  { id: 'zh_male_m191_uranus_bigtts', name: '云舟', label: '男声', desc: '磁性沉稳，策展人气质' },
-  { id: 'zh_male_ruyayichen_saturn_bigtts', name: '一尘', label: '男声', desc: '优雅舒缓，书卷气' },
+  { id: 'zh_female_xiaohe_uranus_bigtts', name: '小荷', label: '女声', labelEn: 'Female', desc: '柔和自然，通用导览', descEn: 'Soft and natural, versatile guide' },
+  { id: 'saturn_zh_female_cancan_tob', name: '灿灿', label: '女声', labelEn: 'Female', desc: '知性清晰，娓娓道来', descEn: 'Clear and articulate, unhurried' },
+  { id: 'zh_male_m191_uranus_bigtts', name: '云舟', label: '男声', labelEn: 'Male', desc: '磁性沉稳，策展人气质', descEn: 'Rich and steady, a curator\u2019s presence' },
+  { id: 'zh_male_ruyayichen_saturn_bigtts', name: '一尘', label: '男声', labelEn: 'Male', desc: '优雅舒缓，书卷气', descEn: 'Elegant and smooth, scholarly' },
 ];
 
 export const DEFAULT_VOICE_ID = VOICE_OPTIONS[0].id;

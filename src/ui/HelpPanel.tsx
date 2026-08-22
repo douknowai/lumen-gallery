@@ -6,9 +6,10 @@
 import { motion } from 'framer-motion';
 import { X, Move, MousePointer, ZoomIn, Hand } from 'lucide-react';
 import { useStore } from '@/state/store';
+import { useI18n } from '@/lib/i18n';
 import { KeyCap } from './primitives';
 
-const DESKTOP_KEYS: [string, string][] = [
+const DESKTOP_KEYS_ZH: [string, string][] = [
   ['W A S D', '移动'],
   ['Shift', '疾跑'],
   ['鼠标拖拽', '环视'],
@@ -20,10 +21,24 @@ const DESKTOP_KEYS: [string, string][] = [
   ['Esc', '关闭 / 释放鼠标'],
 ];
 
+const DESKTOP_KEYS_EN: [string, string][] = [
+  ['W A S D', 'Move'],
+  ['Shift', 'Sprint'],
+  ['Drag mouse', 'Look'],
+  ['Scroll', 'Zoom'],
+  ['E', 'Inspect exhibit'],
+  ['V', 'Switch camera'],
+  ['Click canvas', 'Lock pointer'],
+  ['F', 'Fullscreen'],
+  ['Esc', 'Close & release'],
+];
+
 export default function HelpPanel() {
   const closeHelp = useStore((s) => s.closeHelp);
   const isMobile = useStore((s) => s.isMobile);
   const gallery = useStore((s) => s.data?.gallery);
+  const { t, lang } = useI18n();
+  const deskKeys = lang === 'zh' ? DESKTOP_KEYS_ZH : DESKTOP_KEYS_EN;
 
   return (
     <motion.div
@@ -52,10 +67,10 @@ export default function HelpPanel() {
         transition={{ type: 'spring', stiffness: 260, damping: 30 }}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-serif-lumen text-[22px] font-medium">如何参观</h2>
+          <h2 className="font-serif-lumen text-[22px] font-medium">{t('help.title')}</h2>
           <button
             type="button"
-            aria-label="关闭帮助"
+            aria-label={t('help.close')}
             onClick={closeHelp}
             className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-[var(--paper-dim)]"
           >
@@ -65,12 +80,20 @@ export default function HelpPanel() {
 
         {isMobile ? (
           <div className="space-y-3">
-            {[
-              [<Move key="m" size={18} strokeWidth={1.5} />, '左侧摇杆', '移动（推满疾跑）'],
-              [<Hand key="h" size={18} strokeWidth={1.5} />, '右侧拖拽', '环视'],
-              [<ZoomIn key="z" size={18} strokeWidth={1.5} />, '双指捏合', '缩放'],
-              [<MousePointer key="p" size={18} strokeWidth={1.5} />, '点按展品', '查看详情'],
-            ].map(([icon, k, v], i) => (
+            {(lang === 'zh'
+              ? [
+                  [<Move key="m" size={18} strokeWidth={1.5} />, '左侧摇杆', '移动（推满疾跑）'],
+                  [<Hand key="h" size={18} strokeWidth={1.5} />, '右侧拖拽', '环视'],
+                  [<ZoomIn key="z" size={18} strokeWidth={1.5} />, '双指捏合', '缩放'],
+                  [<MousePointer key="p" size={18} strokeWidth={1.5} />, '点按展品', '查看详情'],
+                ]
+              : [
+                  [<Move key="m" size={18} strokeWidth={1.5} />, 'Left stick', 'Move (full = sprint)'],
+                  [<Hand key="h" size={18} strokeWidth={1.5} />, 'Right drag', 'Look'],
+                  [<ZoomIn key="z" size={18} strokeWidth={1.5} />, 'Pinch', 'Zoom'],
+                  [<MousePointer key="p" size={18} strokeWidth={1.5} />, 'Tap exhibit', 'View details'],
+                ]
+            ).map(([icon, k, v], i) => (
               <div key={i} className="flex items-center gap-3 text-sm">
                 <span style={{ color: 'var(--brass)' }}>{icon}</span>
                 <span className="w-20 font-medium">{k}</span>
@@ -80,7 +103,7 @@ export default function HelpPanel() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
-            {DESKTOP_KEYS.map(([k, v]) => (
+            {deskKeys.map(([k, v]) => (
               <div key={k} className="flex items-center gap-2.5 text-sm">
                 <KeyCap>{k}</KeyCap>
                 <span style={{ color: 'var(--ink-60)' }}>{v}</span>
@@ -90,19 +113,32 @@ export default function HelpPanel() {
         )}
 
         <div className="my-5 h-px" style={{ background: 'var(--line)' }} />
-        <h3 className="font-serif-lumen mb-2 text-[15px] font-medium">关于本展</h3>
-        <p className="text-[13px] leading-[1.8]" style={{ color: 'var(--ink-60)' }}>
-          「{gallery?.title} · {gallery?.titleEn}」基于 LUMEN 流明 3D 虚拟美术馆模板构建——展品、展区与文案全部由
-          <span className="font-mono-lumen text-[12px]"> exhibits.json </span>
-          配置驱动，换素材即换展。展品均来自公共领域开放馆藏，仅用于演示：
-          <a href="https://www.metmuseum.org/art/collection" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>大都会开放获取</a>
-          {' · '}
-          <a href="https://www.artic.edu/open-access" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>芝加哥艺术博物馆</a>
-          {' · '}
-          <a href="https://durian.blender.org/" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>Blender 基金会</a>
-        </p>
+        <h3 className="font-serif-lumen mb-2 text-[15px] font-medium">{t('help.about')}</h3>
+        {lang === 'zh' ? (
+          <p className="text-[13px] leading-[1.8]" style={{ color: 'var(--ink-60)' }}>
+            「{gallery?.title} · {gallery?.titleEn}」基于 LUMEN 流明 3D 虚拟美术馆模板构建——展品、展区与文案全部由
+            <span className="font-mono-lumen text-[12px]"> exhibits.json </span>
+            配置驱动，换素材即换展。展品均来自公共领域开放馆藏，仅用于演示：
+            <a href="https://www.metmuseum.org/art/collection" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>大都会开放获取</a>
+            {' · '}
+            <a href="https://www.artic.edu/open-access" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>芝加哥艺术博物馆</a>
+            {' · '}
+            <a href="https://durian.blender.org/" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>Blender 基金会</a>
+          </p>
+        ) : (
+          <p className="text-[13px] leading-[1.8]" style={{ color: 'var(--ink-60)' }}>
+            “{gallery?.title} · {gallery?.titleEn}” is built on the LUMEN 3D virtual gallery template — exhibits, zones and copy are all driven by
+            <span className="font-mono-lumen text-[12px]"> exhibits.json </span>
+            ; swap the assets and you swap the show. All works come from public-domain open collections, shown for demonstration only:
+            <a href="https://www.metmuseum.org/art/collection" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>The Met Open Access</a>
+            {' · '}
+            <a href="https://www.artic.edu/open-access" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>Art Institute of Chicago</a>
+            {' · '}
+            <a href="https://durian.blender.org/" target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--brass)' }}>Blender Foundation</a>
+          </p>
+        )}
         <div className="mt-5 text-center text-[12.5px]" style={{ color: 'var(--stone)' }}>
-          按 Esc 或点击空白处关闭
+          {t('help.escClose')}
         </div>
       </motion.div>
     </motion.div>

@@ -69,6 +69,23 @@ const DICT: Record<string, { zh: string; en: string }> = {
   'hint.tapView': { zh: '点按查看', en: 'Tap to view' },
   'minimap.title': { zh: '展厅平面图', en: 'Floor plan' },
   'minimap.close': { zh: '关闭地图', en: 'Close map' },
+
+  /* ---------- 设置面板 / 帮助面板 ---------- */
+  'settings.title': { zh: '设置', en: 'Settings' },
+  'settings.close': { zh: '关闭设置', en: 'Close settings' },
+  'settings.voice': { zh: '讲解音色', en: 'Guide Voice' },
+  'settings.input': { zh: '通话输入方式', en: 'Call Input Mode' },
+  'settings.pushName': { zh: '按住说话', en: 'Push to Talk' },
+  'settings.pushLabel': { zh: '推荐', en: 'Recommended' },
+  'settings.pushDesc': { zh: '按住麦克风或空格说话，可控不误触', en: 'Hold the mic or spacebar to talk; precise and controlled' },
+  'settings.vadName': { zh: '免提自动', en: 'Auto VAD' },
+  'settings.vadLabel': { zh: '进阶', en: 'Advanced' },
+  'settings.vadDesc': { zh: '自动检测停顿断句，无需按键', en: 'Auto-detects pauses; no key press needed' },
+  'settings.footer': { zh: '角色模型：Quaternius（Public Domain / CC0）· 按 Esc 或点击空白处关闭', en: 'Character models: Quaternius (Public Domain / CC0) \u00b7 Press Esc or click outside to close' },
+  'help.title': { zh: '操作指引', en: 'How to Visit' },
+  'help.about': { zh: '关于本展', en: 'About This Exhibition' },
+  'help.close': { zh: '关闭帮助', en: 'Close help' },
+  'help.escClose': { zh: '按 Esc 或点击空白处关闭', en: 'Press Esc or click outside to close' },
 };
 
 export function translate(lang: Lang, key: string): string {

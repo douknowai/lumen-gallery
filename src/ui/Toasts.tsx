@@ -34,6 +34,8 @@ export default function Toasts() {
   // Esc 提示：锁定成功后 2.5s
   useEffect(() => {
     if (pointerLocked && !escShown) {
+      // 一次性定时提示：响应指针锁定这一外部事件显示，非可派生状态
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEscVisible(true);
       const t = setTimeout(() => {
         setEscVisible(false);
@@ -48,6 +50,8 @@ export default function Toasts() {
   // 横屏建议：移动端竖屏首次进入
   useEffect(() => {
     if (appState === 'explore' && isMobile && !landscapeShown && window.innerHeight > window.innerWidth) {
+      // 一次性定时提示：竖屏首次进入的引导，非可派生状态
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLandscapeVisible(true);
       const t = setTimeout(() => {
         setLandscapeVisible(false);
@@ -64,11 +68,15 @@ export default function Toasts() {
       const t = setTimeout(() => setLockHint(true), 6000);
       return () => clearTimeout(t);
     }
+    // 离开触发条件时同步清除提示（对应外部状态的派生展示）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLockHint(false);
     return undefined;
   }, [appState, cameraMode, pointerLocked, isMobile]);
 
   useEffect(() => {
+    // 锁定后立即清除「点击锁定」提示
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (pointerLocked) setLockHint(false);
   }, [pointerLocked]);
 

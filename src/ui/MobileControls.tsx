@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '@/state/store';
 import { input } from '@/systems/controls/input';
-import { openExhibit } from '@/scene/exhibits/ExhibitRoot';
+import { openExhibit } from '@/state/exhibitActions';
 
 export default function MobileControls() {
   const isMobile = useStore((s) => s.isMobile);

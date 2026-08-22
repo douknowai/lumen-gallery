@@ -57,8 +57,8 @@ function pushOut(px: number, pz: number, r: number, o: Obstacle): [number, numbe
     // AABB 上离圆心最近的点
     const cx = Math.max(o.minX, Math.min(px, o.maxX));
     const cz = Math.max(o.minZ, Math.min(pz, o.maxZ));
-    let dx = px - cx;
-    let dz = pz - cz;
+    const dx = px - cx;
+    const dz = pz - cz;
     const d2 = dx * dx + dz * dz;
     if (d2 >= r * r) return [px, pz]; // 无重叠
     if (d2 > 1e-8) {

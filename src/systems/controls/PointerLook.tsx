@@ -10,8 +10,8 @@ import { useThree } from '@react-three/fiber';
 import { CAMERA } from '@/config/site';
 import { useStore, playerRef } from '@/state/store';
 import { input } from './input';
-import { lastExhibitClickAt } from '@/scene/exhibits/ExhibitRoot';
-import { clampFirstFov } from '@/scene/cameras/FirstPersonRig';
+import { elapsedSinceExhibitClick } from '@/state/exhibitActions';
+import { clampFirstFov } from '@/scene/cameras/rigMath';
 
 function clampPitch(p: number, first: boolean): number {
   const lim = first ? CAMERA.first : CAMERA.third;
@@ -60,7 +60,7 @@ export default function PointerLook() {
         wasClick &&
         st().appState === 'explore' &&
         document.pointerLockElement !== el &&
-        Date.now() - lastExhibitClickAt > 150
+        elapsedSinceExhibitClick(150)
       ) {
         el.requestPointerLock?.();
       }

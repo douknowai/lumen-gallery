@@ -13,7 +13,7 @@ import { CAMERA } from '@/config/site';
 import { useStore, playerRef } from '@/state/store';
 import { input } from '@/systems/controls/input';
 import { thirdPersonPose, firstPersonPose, easeInOutCubic, type Pose } from './rigMath';
-import { introPose, INTRO_DURATION } from './IntroDolly';
+import { introPose, INTRO_DURATION } from './introDollyMath';
 import ThirdPersonRig from './ThirdPersonRig';
 
 export default function CameraDirector() {
@@ -39,6 +39,18 @@ export default function CameraDirector() {
       prevMode.current = cameraMode;
     }
   }, [cameraMode]);
+
+  function applyPose(pose: Pose, posLerp: number) {
+    curPos.current.lerp(pose.pos, posLerp);
+    curQuat.current.slerp(pose.quat, Math.min(1, posLerp * 2));
+    curFov.current = THREE.MathUtils.lerp(curFov.current, pose.fov, Math.min(1, posLerp * 2));
+    camera.position.copy(curPos.current);
+    camera.quaternion.copy(curQuat.current);
+    if (Math.abs(camera.fov - curFov.current) > 0.01) {
+      camera.fov = curFov.current;
+      camera.updateProjectionMatrix();
+    }
+  }
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
@@ -116,18 +128,6 @@ export default function CameraDirector() {
     const lerpK = cameraMode === 'third' ? 1 - Math.pow(1 - CAMERA.third.posLerp, dt * 60) : 1;
     applyPose(pose, lerpK);
   });
-
-  function applyPose(pose: Pose, posLerp: number) {
-    curPos.current.lerp(pose.pos, posLerp);
-    curQuat.current.slerp(pose.quat, Math.min(1, posLerp * 2));
-    curFov.current = THREE.MathUtils.lerp(curFov.current, pose.fov, Math.min(1, posLerp * 2));
-    camera.position.copy(curPos.current);
-    camera.quaternion.copy(curQuat.current);
-    if (Math.abs(camera.fov - curFov.current) > 0.01) {
-      camera.fov = curFov.current;
-      camera.updateProjectionMatrix();
-    }
-  }
 
   return <ThirdPersonRig hitTRef={hitTRef} />;
 }

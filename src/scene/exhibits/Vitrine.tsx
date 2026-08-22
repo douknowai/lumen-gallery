@@ -3,7 +3,7 @@
  * 白基座 0.6×0.6×0.8 + 玻璃罩 0.55×0.55×0.9（移动端改磨砂）+ 顶部内嵌微型射灯
  * （常亮微呼吸 ±5%，3s）+ 内部 0.4m 高立式相片牌（15° 后仰）+ 假投影 + 标签。
  */
-import { Suspense, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
@@ -33,7 +33,12 @@ function PhotoCard({ e }: { e: Exhibit }) {
 export default function Vitrine({ exhibit: e }: { exhibit: Exhibit }) {
   const blob = useMemo(() => shadowBlobTexture(), []);
   const lampRef = useRef<THREE.PointLight>(null);
-  const t = useRef(Math.random() * 3);
+  const t = useRef(0);
+
+  // 每实例一次随机呼吸相位（移入 effect，保证渲染纯函数）
+  useEffect(() => {
+    t.current = Math.random() * 3;
+  }, []);
 
   // 内嵌灯常亮微呼吸（intensity ±5%，3s 周期）
   useFrame((_, dt) => {

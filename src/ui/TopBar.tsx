@@ -32,7 +32,7 @@ export default function TopBar() {
       >
         <img src="assets/logo.svg" alt="" className="h-6 w-6" />
         <span className="font-serif-lumen text-[15px] font-medium tracking-[0.18em]">
-          LUMEN{!isMobile && <span className="ml-1">流明</span>}
+          LUMEN{!isMobile && lang === 'zh' && <span className="ml-1">流明</span>}
         </span>
       </motion.div>
       <motion.div

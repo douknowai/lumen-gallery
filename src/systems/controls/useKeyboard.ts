@@ -7,7 +7,7 @@
 import { useEffect } from 'react';
 import { useStore } from '@/state/store';
 import { input } from './input';
-import { openExhibit } from '@/scene/exhibits/ExhibitRoot';
+import { openExhibit } from '@/state/exhibitActions';
 
 const MOVE_CODES = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD',
