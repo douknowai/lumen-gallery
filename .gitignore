@@ -43,6 +43,8 @@ lerna-debug.log*
 Thumbs.db
 desktop.ini
 ehthumbs.db
+*.bak
+*.orig
 
 # ────────────────────────────────────────────────────────────
 # 环境变量 / 密钥（私密信息绝不入库）
@@ -62,6 +64,7 @@ secrets/
 .cache/
 .temp/
 .tmp/
+.history/
 *.tsbuildinfo
 .eslintcache
 .stylelintcache
@@ -110,4 +113,3 @@ scripts/debug*.mjs
 # ────────────────────────────────────────────────────────────
 .preview
 .cozeproj/reduction
-.codegraph

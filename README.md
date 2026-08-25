@@ -3,17 +3,25 @@
 一个**可复用**的浏览器端 3D 虚拟美术馆模板：一次搭建，换数据即换展。
 适用于作品集展示、品牌宣传、艺术展览、博物馆、数字展厅等场景。
 
-- 渲染引擎：Three.js + React Three Fiber（TypeScript）
-- 数据驱动：全部展品由 `public/data/exhibits.json` 配置，**无需改代码**即可换展
-- 演示内容：19 件展品 —— 11 件公共领域画作 + 4 件真实 3D 扫描雕塑（维纳斯 / 大卫头像 / 思想者 / 掷铁饼者，来自 SMK 丹麦国家美术馆与独立扫描者，CC0 / CC-BY）+ 文本 / 视频 / 链接展品，来源与许可见 `public/assets/ASSETS-LICENSE.md`
-- AI 语音讲解：每件展品可「打电话式」对话（录音 → ASR → LLM 流式 → TTS 播报），见「四、AI 语音讲解」
+**技术栈**：Vite + React 19 + TypeScript · Three.js + React Three Fiber · Zustand · Tailwind CSS · Node（AI 后端）
+
+## ✨ 核心能力
+
+- **3D 漫游**：第三人称 / 第一人称双视角，键盘 + 鼠标 + 触屏操控，碰撞检测与区域灯光调度
+- **数据驱动**：全部展品由 `public/data/exhibits.json` 配置，**无需改代码**即可换展
+- **多角色系统**：4 个内置角色（Quaternius CC0），骨骼动画 + 程序化人台回退
+- **AI 语音讲解**：每件展品可「打电话式」对话（录音 → ASR → LLM 流式 → TTS 播报）
+- **多模态看图讲解 + AI 总导览员**：AI 真正「看画」讲画、全馆路线规划与答疑
+- **中英双语**：界面与展品文案一键切换
+- **演示内容**：19 件展品 —— 11 件公共领域画作 + 4 件真实 3D 扫描雕塑（维纳斯 / 大卫头像 / 思想者 / 掷铁饼者，来自 SMK 丹麦国家美术馆与独立扫描者，CC0 / CC-BY）+ 文本 / 视频 / 链接展品，来源与许可见 `public/assets/ASSETS-LICENSE.md`
 
 ---
 
 ## 一、快速开始
 
+> **环境要求**：Node.js 20+（推荐 22+）与 pnpm（请勿使用 npm / yarn）。
+
 ```bash
-# 环境要求：Node.js 20+（推荐 22+）与 pnpm
 pnpm install      # 安装依赖
 pnpm dev          # 开发模式，默认 http://localhost:5000（端口由 DEPLOY_RUN_PORT 决定）
 pnpm build        # 类型检查 + 生产构建，输出 dist/
