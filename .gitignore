@@ -113,3 +113,4 @@ scripts/debug*.mjs
 # ────────────────────────────────────────────────────────────
 .preview
 .cozeproj/reduction
+.codegraph
