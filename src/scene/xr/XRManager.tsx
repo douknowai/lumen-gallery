@@ -97,9 +97,12 @@ function XRLocomotion({ originRef }: { originRef: RefObject<THREE.Group | null> 
   return null;
 }
 
-/** 把 XROrigin 世界坐标同步回 playerRef，供 Minimap 等系统复用；yaw 朝向待真机校准后追加。 */
+/** 把 XROrigin 世界坐标同步回 playerRef，供 Minimap 等系统复用；yaw 朝向待真机校准后追加。
+ *  仅 XR 会话激活时同步——桌面模式下 originRef 停留在出生点，若无条件写入会把键盘移动每帧拽回原点。 */
 function XROriginSync({ originRef }: { originRef: RefObject<THREE.Group | null> }) {
+  const session = useXR((s) => s.session);
   useFrame(() => {
+    if (!session) return;
     const g = originRef.current;
     if (!g) return;
     playerRef.x = g.position.x;
