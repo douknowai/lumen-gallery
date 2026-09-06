@@ -27,7 +27,7 @@ export const PERF = {
 
 /** 行走与碰撞 */
 export const MOVE = {
-  walkSpeed: 3.0, // m/s
+  walkSpeed: 2.0, // m/s
   runMultiplier: 1.8,
   capsuleRadius: 0.32,
   capsuleHeight: 1.75,

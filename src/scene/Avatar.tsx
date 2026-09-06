@@ -23,8 +23,8 @@ import type { Character } from '@/config/schema';
 const FADE_IN = 0.35;
 /** 动画状态切换淡变时长（秒） */
 const CROSS_FADE = 0.25;
-/** Walk→Run 速度阈值（walkSpeed 3.0，留 0.1 容差避免满速行走误判） */
-const RUN_SPEED = 3.1;
+/** Walk→Run 速度阈值（walkSpeed 2.0，留 0.1 容差避免满速行走误判） */
+const RUN_SPEED = 2.1;
 
 type AnimState = 'idle' | 'walk' | 'run';
 
