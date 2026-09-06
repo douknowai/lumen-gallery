@@ -7,14 +7,61 @@
     "preface": "本展汇集已进入公共领域的艺术杰作：从维米尔的静谧窗光到葛饰北斋的巨浪，从梵高的麦田到修拉的点彩河岸。这些作品的原作分藏于大都会艺术博物馆等机构，其高清图像已以公共领域或 CC0 方式向全世界开放。我们希望用一座可以随时走进的浏览器展厅，让经典在数字空间中再次被看见、被走近、被凝视。请自由行走，靠近任何一件作品，灯光会为你亮起。",
     "prefaceEn": "This exhibition brings together masterpieces that have entered the public domain: from Vermeer's tranquil window light to Hokusai's great wave, from Van Gogh's wheat fields to Seurat's pointillist riverbank. The originals are housed at The Met and other institutions, and their high-resolution images are now open to the world as public domain or CC0. Our hope is that this browser gallery — one you can step into at any moment — lets the classics be seen, approached, and looked upon once more in the digital space. Walk freely; approach any work and the light will find you.",
     "sound": false,
-    "spawn": { "position": [0, 0, 5.2], "headingDeg": 180 },
+    "spawn": {
+      "position": [
+        0,
+        0,
+        5.2
+      ],
+      "headingDeg": 180
+    },
     "accent": "#A67C3D"
   },
   "zones": [
-    { "id": "hall",      "name": "序厅 · 中央大厅", "nameEn": "Central Hall",    "bounds": [-12, -7, 12, 7] },
-    { "id": "painting",  "name": "西翼 · 绘画长廊", "nameEn": "Painting Wing",   "bounds": [-28, -5, -12, 5] },
-    { "id": "sculpture", "name": "东翼 · 雕塑与器物厅", "nameEn": "Sculpture Wing", "bounds": [12, -5, 28, 5] },
-    { "id": "media",     "name": "影像与文献厅",   "nameEn": "Media Room",      "bounds": [-7, -17, 7, -7] }
+    {
+      "id": "hall",
+      "name": "序厅 · 中央大厅",
+      "nameEn": "Central Hall",
+      "bounds": [
+        -12,
+        -7,
+        12,
+        7
+      ]
+    },
+    {
+      "id": "painting",
+      "name": "西翼 · 绘画长廊",
+      "nameEn": "Painting Wing",
+      "bounds": [
+        -28,
+        -5,
+        -12,
+        5
+      ]
+    },
+    {
+      "id": "sculpture",
+      "name": "东翼 · 雕塑与器物厅",
+      "nameEn": "Sculpture Wing",
+      "bounds": [
+        12,
+        -5,
+        28,
+        5
+      ]
+    },
+    {
+      "id": "media",
+      "name": "影像与文献厅",
+      "nameEn": "Media Room",
+      "bounds": [
+        -7,
+        -17,
+        7,
+        -7
+      ]
+    }
   ],
   "exhibits": [
     {
@@ -31,7 +78,11 @@
       "description": "1820 年发现于希腊米洛岛，是希腊化时期最著名的大理石雕像之一。女神从容的站姿与失佚的双臂，反而成就了后世对古典美的无尽想象。本展台的模型来自丹麦国家美术馆 Royal Cast Collection 的石膏铸件扫描（编号 KAS434/1），以 CC0 公共领域方式开放。",
       "descriptionEn": "Discovered on the island of Melos in 1820, this is one of the most celebrated marble statues of the Hellenistic age. The goddess's poised stance and the mystery of her missing arms have fueled centuries of imagination about classical beauty. This model is scanned from the Royal Cast Collection at the National Gallery of Denmark (No. KAS434/1), released under CC0 / Public Domain; the original is in the Louvre, Paris.",
       "src": "/assets/models/venus-de-milo.glb",
-      "position": [0, 0, -0.5],
+      "position": [
+        0,
+        0,
+        -0.5
+      ],
       "rotationDeg": 0,
       "modelRotationDeg": 0,
       "modelScale": 0.8,
@@ -54,9 +105,16 @@
       "descriptionEn": "Leutze depicts the historic Christmas-night crossing of the icy Delaware River in 1776, when Washington led the Continental Army in a surprise attack on Trenton. Composing ice, dawn light and the Stars and Stripes into a scene of high drama, he created an icon of American history painting. The original is monumental (over 3.7 × 6.4 m) and hangs in a prominent position in the Met's American Wing.",
       "src": "/assets/artworks/leutze-washington.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/11417",
-      "position": [-11.84, 1.6, 5.2],
+      "position": [
+        -11.84,
+        1.6,
+        5.2
+      ],
       "rotationDeg": 90,
-      "size": { "w": 2.2, "h": 1.25 },
+      "size": {
+        "w": 2.2,
+        "h": 1.25
+      },
       "frame": "gilt",
       "spotlight": true
     },
@@ -75,9 +133,16 @@
       "descriptionEn": "During his stay at Saint-Rémy in 1889, Van Gogh painted several works on the cypress motif. The whirling sky, flame-like cypresses and golden wheat became some of the most recognizable visual language of his late period. In a letter to his brother Theo he wrote that cypresses were 'as beautiful as an Egyptian obelisk' — one of his favorite subjects.",
       "src": "/assets/artworks/vangogh-cypresses.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/437980",
-      "position": [11.84, 1.6, 5.2],
+      "position": [
+        11.84,
+        1.6,
+        5.2
+      ],
       "rotationDeg": -90,
-      "size": { "w": 1.6, "h": 1.25 },
+      "size": {
+        "w": 1.6,
+        "h": 1.25
+      },
       "frame": "oak",
       "spotlight": true
     },
@@ -93,9 +158,16 @@
       "credit": "LUMEN 流明 · 虚拟美术馆模板",
       "description": "本展汇集已进入公共领域的艺术杰作：从维米尔的静谧窗光到葛饰北斋的巨浪，从梵高的麦田到修拉的点彩河岸。这些作品的高清图像已以公共领域方式向全世界开放。请自由行走，靠近任何一件作品，灯光会为你亮起。",
       "descriptionEn": "This exhibition brings together masterpieces that have entered the public domain: from Vermeer's quiet window light to Hokusai's great wave, from Van Gogh's wheat fields to Seurat's pointillist riverbank. High-resolution images of these works are open to the world under public-domain terms. Walk freely; approach any work and the light will find you.",
-      "position": [7.5, 1.5, -6.82],
+      "position": [
+        7.5,
+        1.5,
+        -6.82
+      ],
       "rotationDeg": 0,
-      "size": { "w": 1.2, "h": 0.9 },
+      "size": {
+        "w": 1.2,
+        "h": 0.9
+      },
       "spotlight": false
     },
     {
@@ -113,9 +185,16 @@
       "descriptionEn": "During his stay in Paris in 1887, Van Gogh painted a series of self-portraits — partly because he could not afford models, and partly to experiment with the new colors of Pointillism and Impressionism. Against a blue-green ground, thickly applied brushstrokes build up in layers, and the yellow of the straw hat contrasts sharply with the warm tones of the face. On the reverse of this panel lies another painting, The Potato Peeler.",
       "src": "/assets/artworks/vangogh-selfportrait.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/436532",
-      "position": [-15.5, 1.55, -4.84],
+      "position": [
+        -15.5,
+        1.55,
+        -4.84
+      ],
       "rotationDeg": 0,
-      "size": { "w": 0.62, "h": 0.82 },
+      "size": {
+        "w": 0.62,
+        "h": 0.82
+      },
       "frame": "black",
       "spotlight": true
     },
@@ -134,9 +213,16 @@
       "descriptionEn": "One of Vermeer's mature masterpieces: morning light floods in from a window on the left as a woman rests one hand on the casement and holds a silver pitcher in the other. With extraordinarily fine layers of pigment, Vermeer renders fabric, metal and a map with almost tactile precision — earning him the nickname 'the Pearl of Delft'. Fewer than forty paintings by Vermeer survive, each one precious.",
       "src": "/assets/artworks/vermeer-pitcher.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/437881",
-      "position": [-19.5, 1.55, -4.84],
+      "position": [
+        -19.5,
+        1.55,
+        -4.84
+      ],
       "rotationDeg": 0,
-      "size": { "w": 0.55, "h": 0.62 },
+      "size": {
+        "w": 0.55,
+        "h": 0.62
+      },
       "frame": "gilt",
       "spotlight": true
     },
@@ -155,9 +241,16 @@
       "descriptionEn": "Pissarro was the only Impressionist to participate in all eight Impressionist exhibitions, and was regarded as a mentor by Cézanne and Gauguin. This 1867 view of Pontoise organizes fields, rooftops and hillside into a stable horizontal structure, with a sober, expansive palette — a key work for understanding the turn toward Impressionism.",
       "src": "/assets/artworks/pissarro-jalais.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/437299",
-      "position": [-23.5, 1.55, -4.84],
+      "position": [
+        -23.5,
+        1.55,
+        -4.84
+      ],
       "rotationDeg": 0,
-      "size": { "w": 1.0, "h": 0.78 },
+      "size": {
+        "w": 1,
+        "h": 0.78
+      },
       "frame": "oak",
       "spotlight": true
     },
@@ -176,9 +269,16 @@
       "descriptionEn": "Morisot was the leading woman painter of the Impressionist group, known for capturing the mood of everyday figures with light, agile brushwork. Here a woman sits in a pink dress while the background dissolves into loose, animated strokes — a style poised between portrait and genre painting. In 1874 she took part in the first Impressionist exhibition, one of its only female founding members.",
       "src": "/assets/artworks/morisot-pinkdress.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/438009",
-      "position": [-15.5, 1.55, 4.84],
+      "position": [
+        -15.5,
+        1.55,
+        4.84
+      ],
       "rotationDeg": 180,
-      "size": { "w": 0.9, "h": 1.15 },
+      "size": {
+        "w": 0.9,
+        "h": 1.15
+      },
       "frame": "gilt",
       "spotlight": true
     },
@@ -197,9 +297,16 @@
       "descriptionEn": "This is one of dozens of studies Seurat made for his monumental A Sunday on La Grande Jatte, now at the Art Institute of Chicago. Between 1884 and 1886, Seurat used 'Pointillism' to arrange spectral dots of color into a serene riverside crowd, inaugurating Neo-Impressionism. Though small, the study already reveals the bay and the play of light that anchor the final composition.",
       "src": "/assets/artworks/seurat-grande-jatte.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/437658",
-      "position": [-19.5, 1.55, 4.84],
+      "position": [
+        -19.5,
+        1.55,
+        4.84
+      ],
       "rotationDeg": 180,
-      "size": { "w": 1.5, "h": 1.02 },
+      "size": {
+        "w": 1.5,
+        "h": 1.02
+      },
       "frame": "black",
       "spotlight": true
     },
@@ -218,9 +325,16 @@
       "descriptionEn": "Degas was fascinated by ballet dancers throughout his life: the mirrors of the rehearsal room, the barre, the diagonal compositions and fleeting poses all reflect a modern eye borrowed from photography and Japanese prints. This 1874 Dance Class was shown at the first Impressionist exhibition; the elderly teacher at center is the ballet master Jules Perrot.",
       "src": "/assets/artworks/degas-dance.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/438817",
-      "position": [-23.5, 1.55, 4.84],
+      "position": [
+        -23.5,
+        1.55,
+        4.84
+      ],
       "rotationDeg": 180,
-      "size": { "w": 0.85, "h": 0.85 },
+      "size": {
+        "w": 0.85,
+        "h": 0.85
+      },
       "frame": "oak",
       "spotlight": true
     },
@@ -239,9 +353,16 @@
       "descriptionEn": "The most celebrated print of Thirty-six Views of Mount Fuji: a great wave coils like a claw while Mount Fuji stands motionless in the distance. Hokusai's bold use of imported Prussian blue gives the spray an unprecedented clarity. The work profoundly influenced European Impressionism and Post-Impressionism — Debussy's La Mer famously took this wave for its cover.",
       "src": "/assets/artworks/hokusai-wave.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/36491",
-      "position": [-27.84, 1.55, 0],
+      "position": [
+        -27.84,
+        1.55,
+        0
+      ],
       "rotationDeg": 90,
-      "size": { "w": 1.1, "h": 0.75 },
+      "size": {
+        "w": 1.1,
+        "h": 0.75
+      },
       "frame": "black",
       "spotlight": true
     },
@@ -259,7 +380,11 @@
       "description": "米开朗基罗以一整块被弃用的巨型大理石雕成《大卫》，成为佛罗伦萨共和国的精神象征。紧锁的眉宇与侧视的目光，凝聚了战斗前一刻的意志。本展台为 1899 年裁切胸像铸件的高精度扫描，源自丹麦国家美术馆馆藏。",
       "descriptionEn": "Michelangelo carved David from a single, previously abandoned block of marble, and the statue became a symbol of the Florentine Republic. The knitted brow and sidelong gaze concentrate the will of the moment before battle. This display is a high-resolution scan of an 1899 bust cast, from the National Gallery of Denmark.",
       "src": "/assets/models/david-head.glb",
-      "position": [16.5, 0, 0],
+      "position": [
+        16.5,
+        0,
+        0
+      ],
       "rotationDeg": 0,
       "modelRotationDeg": 0,
       "modelScale": 1,
@@ -280,7 +405,11 @@
       "description": "《思想者》最初是罗丹为巴黎装饰艺术博物馆大门《地狱之门》设计的顶部人物，原意为俯瞰人类命运的但丁。全身紧绷的肌肉与低垂的目光，把“沉思”变成了可触的形体。本展台为 2017 年实地摄影测量扫描（约 700 张照片重建），按 CC-BY 4.0 共享，须署名 Rigsters。",
       "descriptionEn": "The Thinker was originally conceived as the crowning figure of Rodin's Gates of Hell for the Musée des Arts Décoratifs in Paris, intended as Dante gazing down upon human destiny. The tensed muscles and lowered gaze turn 'thought' into tangible form. This model is a 2017 photogrammetric scan (reconstructed from roughly 700 photographs), shared under CC-BY 4.0 with attribution to Rigsters.",
       "src": "/assets/models/the-thinker.glb",
-      "position": [20, 0, 0],
+      "position": [
+        20,
+        0,
+        0
+      ],
       "rotationDeg": 0,
       "modelRotationDeg": 0,
       "modelScale": 1,
@@ -301,7 +430,11 @@
       "description": "古希腊雕塑家米隆的《掷铁饼者》凝固了运动员回旋发力的瞬间，被奉为古典时期“运动中的平衡”的典范。原作已佚，今仅存数件罗马时代大理石摹品。本展台为丹麦国家美术馆 Royal Cast Collection 的石膏铸件扫描，以 CC0 公共领域方式开放。",
       "descriptionEn": "Myron's Discobolus freezes the moment an athlete coils to release the discus — celebrated as the classical ideal of 'balance in motion'. The bronze original is lost; only a few Roman marble copies survive. This display is scanned from the Royal Cast Collection at the National Gallery of Denmark, released under CC0 / Public Domain.",
       "src": "/assets/models/discobolus.glb",
-      "position": [23.5, 0, 0],
+      "position": [
+        23.5,
+        0,
+        0
+      ],
       "rotationDeg": 0,
       "modelRotationDeg": 0,
       "modelScale": 1,
@@ -323,9 +456,16 @@
       "descriptionEn": "The meiping — literally 'prunus vase' — is named for its narrow mouth, just wide enough for a plum branch, and has been a classic form since the Song dynasty. This vase paints dragons amid waves in underglaze cobalt blue and copper red; copper red is notoriously difficult to fire, making the red-and-blue pairing especially prized. The case shows a photograph of the object, held in the Met's Asian Art department.",
       "src": "/assets/artworks/qing-vase.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/42368",
-      "position": [18.25, 0, -3.8],
+      "position": [
+        18.25,
+        0,
+        -3.8
+      ],
       "rotationDeg": 0,
-      "size": { "w": 0.4, "h": 0.55 },
+      "size": {
+        "w": 0.4,
+        "h": 0.55
+      },
       "spotlight": true
     },
     {
@@ -343,9 +483,16 @@
       "descriptionEn": "This Attic amphora dates from the pivotal transition from black-figure to red-figure, and is associated with the Andokides Painter, credited with inventing red-figure. The two sides render similar scenes in the two techniques — a side-by-side experiment between old and new styles, and a textbook masterpiece in the history of ceramics.",
       "src": "/assets/artworks/greek-amphora.jpg",
       "link": "https://www.metmuseum.org/art/collection/search/255154",
-      "position": [21.75, 0, -3.8],
+      "position": [
+        21.75,
+        0,
+        -3.8
+      ],
       "rotationDeg": 0,
-      "size": { "w": 0.4, "h": 0.55 },
+      "size": {
+        "w": 0.4,
+        "h": 0.55
+      },
       "spotlight": true
     },
     {
@@ -364,9 +511,16 @@
       "src": "/assets/videos/bbb.mp4",
       "poster": "/assets/videos/bbb-poster.jpg",
       "link": "https://durian.blender.org/",
-      "position": [0, 1.7, -16.84],
+      "position": [
+        0,
+        1.7,
+        -16.84
+      ],
       "rotationDeg": 0,
-      "size": { "w": 2.4, "h": 1.35 },
+      "size": {
+        "w": 2.4,
+        "h": 1.35
+      },
       "focusRadius": 3.5,
       "spotlight": true
     },
@@ -382,9 +536,16 @@
       "credit": "LUMEN 流明 · 虚拟美术馆模板",
       "description": "当作品的版权保护期届满，它便进入公共领域，成为全人类可以自由使用、改编与再创造的文化遗产。大都会艺术博物馆 2017 年起以 CC0 开放逾 37 万件藏品图像；芝加哥艺术博物馆、荷兰国立博物馆等亦相继跟进。本展厅的全部演示素材即来自这些开放馆藏——换一批素材，就是一座新馆。",
       "descriptionEn": "When a work's copyright term expires, it enters the public domain — cultural heritage that everyone may freely use, adapt and re-create. Since 2017, The Metropolitan Museum of Art has released more than 370,000 collection images under CC0; the Art Institute of Chicago and the Rijksmuseum have followed suit. All this gallery's demo assets come from these open collections — swap in another set, and it becomes a new museum.",
-      "position": [-6.84, 1.5, -12],
+      "position": [
+        -6.84,
+        1.5,
+        -12
+      ],
       "rotationDeg": 90,
-      "size": { "w": 1.2, "h": 0.9 },
+      "size": {
+        "w": 1.2,
+        "h": 0.9
+      },
       "spotlight": false
     },
     {
@@ -401,9 +562,16 @@
       "description": "大都会艺术博物馆的 Open Access 计划将逾 37 万件公共领域藏品的高清图像与元数据以 CC0 协议开放，无需申请即可用于任何用途。本展的大部分绘画与器物照片即来自该计划。点击“前往访问”探索全部开放馆藏。",
       "descriptionEn": "The Met's Open Access program releases high-resolution images and metadata for more than 370,000 public-domain works under CC0, free to use for any purpose without application. Most of this exhibition's paintings and objects come from the program. Tap 'Visit' to explore the full open collection.",
       "link": "https://www.metmuseum.org/art/collection",
-      "position": [6.84, 1.5, -12],
+      "position": [
+        6.84,
+        1.5,
+        -12
+      ],
       "rotationDeg": -90,
-      "size": { "w": 1.2, "h": 0.9 },
+      "size": {
+        "w": 1.2,
+        "h": 0.9
+      },
       "spotlight": false
     }
   ]

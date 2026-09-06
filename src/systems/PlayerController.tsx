@@ -53,6 +53,8 @@ export default function PlayerController() {
     const dt = Math.min(rawDt, 0.05);
     const st = useStore.getState();
     if (!st.data) return;
+    // XR 会话激活时移动/聚焦由 XRManager 手柄交互接管，桌面输入暂停
+    if (st.xrActive) return;
 
     // ---- 移动（漫游输入仅 explore 态生效；聚焦运镜期间挂起） ----
     if (st.appState === 'explore' && !playerRef.focusMove) {

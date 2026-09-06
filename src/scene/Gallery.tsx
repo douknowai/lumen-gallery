@@ -19,6 +19,7 @@ import ExhibitRoot from './exhibits/ExhibitRoot';
 import GalleryLighting from './lighting/GalleryLighting';
 import Avatar from './Avatar';
 import CameraDirector from './cameras/CameraDirector';
+import XRManager from './xr/XRManager';
 import { introFogDensity } from './cameras/introDollyMath';
 import PlayerController from '@/systems/PlayerController';
 import PointerLook from '@/systems/controls/PointerLook';
@@ -35,8 +36,10 @@ function FrameDriver() {
     let last = 0;
     const loop = (t: number) => {
       raf = requestAnimationFrame(loop);
-      const st = useStore.getState().appState;
-      const degraded = st !== 'explore' && st !== 'entering';
+      const st = useStore.getState();
+      // XR 会话激活时由 three.js setAnimationLoop 驱动，rAF 暂停 advance（避免双重渲染）
+      if (st.xrActive) return;
+      const degraded = st.appState !== 'explore' && st.appState !== 'entering';
       if (degraded && t - last < 1000 / PERF.degradedFps) return;
       last = t;
       advance(t);
@@ -133,6 +136,7 @@ export default function Gallery() {
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', touchAction: 'none' }}
       >
         <FrameDriver />
+        <XRManager />
         <Atmosphere />
         <Suspense fallback={null}>
           <GalleryScene />

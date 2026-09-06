@@ -6,6 +6,7 @@ import { PersonStanding, Eye, HelpCircle, Maximize, Settings, AudioLines } from 
 import { useStore } from '@/state/store';
 import { IconButton } from './primitives';
 import { useI18n } from '@/lib/i18n';
+import XRModeButton from './XRModeButton';
 
 export default function TopBar() {
   const cameraMode = useStore((s) => s.cameraMode);
@@ -80,6 +81,7 @@ export default function TopBar() {
             {lang === 'zh' ? 'EN' : '中'}
           </span>
         </IconButton>
+        {!isMobile && <XRModeButton />}
         <IconButton title={t('nav.help')} onClick={toggleHelp}>
           <HelpCircle size={20} strokeWidth={1.5} />
         </IconButton>

@@ -55,6 +55,8 @@ export default function CameraDirector() {
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
     const st = useStore.getState();
+    // XR 会话激活时相机由头显（gl.xr.getCamera）接管，桌面第三人称/第一人称 rig 暂停
+    if (st.xrActive) return;
     const appState = st.appState;
 
     // ---- 聚焦运镜：0.8s 内把玩家位置/朝向滑到观赏位 ----

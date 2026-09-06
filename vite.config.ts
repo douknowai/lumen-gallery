@@ -43,6 +43,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // 生产禁用 WebXR 模拟器：@iwer/* 仅用于浏览器内模拟 XR 设备（含约 5MB 房间模型），
+      // 真机 Quest 场景不需要，替换为空实现以避免被 rollup 打进产物。
+      "@iwer/devui": path.resolve(__dirname, "./src/scene/xr/shims/emulate-deps.js"),
+      "@iwer/sem": path.resolve(__dirname, "./src/scene/xr/shims/emulate-deps.js"),
+      iwer: path.resolve(__dirname, "./src/scene/xr/shims/emulate-deps.js"),
     },
   },
   build: {

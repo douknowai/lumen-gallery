@@ -135,6 +135,8 @@ export interface Store {
   lang: Lang;
   /** 导览员面板是否打开（独立覆盖层，不影响 3D 走动） */
   guideOpen: boolean;
+  /** WebXR 会话是否激活（VR 模式下桌面输入/相机/帧驱动暂停，交由 HMD + 手柄接管） */
+  xrActive: boolean;
 
   setData: (d: ExhibitsData) => void;
   setCharacters: (c: CharactersData) => void;
@@ -181,6 +183,7 @@ export interface Store {
   openGuide: () => void;
   closeGuide: () => void;
   toggleGuide: () => void;
+  setXrActive: (v: boolean) => void;
   /** Esc 逐层返回：lightbox > modal > help > explore */
   escape: () => void;
 }
@@ -210,6 +213,7 @@ export const useStore = create<Store>((set, get) => ({
   dismissedHints: [],
   lang: readSavedLang(),
   guideOpen: false,
+  xrActive: false,
 
   setData: (d) => set({ data: d }),
   setCharacters: (c) => set({ characters: c }),
@@ -248,6 +252,7 @@ export const useStore = create<Store>((set, get) => ({
         : { zone: z, visitedZones: s.visitedZones.includes(z) ? s.visitedZones : [...s.visitedZones, z] },
     ),
   setFocused: (id) => set((s) => (s.focusedId === id ? s : { focusedId: id })),
+  setXrActive: (v) => set((s) => (s.xrActive === v ? s : { xrActive: v })),
   openModal: (id) =>
     set((s) => ({
       appState: 'modal',

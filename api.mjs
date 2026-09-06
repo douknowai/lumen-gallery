@@ -543,6 +543,78 @@ async function handleGuide(req, res, body, customHeaders) {
 }
 
 /* ------------------------------------------------------------------ */
+/* 策展后台 CMS：读写展品数据（数据驱动，CRUD 落到 exhibits.json）        */
+/* ------------------------------------------------------------------ */
+
+const CMS_DATA_FILE = path.join(process.cwd(), 'public', 'data', 'exhibits.json');
+const CMS_TMP_FILE = '/tmp/lumen-cms-exhibits.json';
+
+/** 读取展品数据：生产优先读临时覆盖（编辑后立即预览），开发直接读仓库文件 */
+function readExhibitsFile() {
+  const isProd = process.env.COZE_PROJECT_ENV === 'PROD';
+  const candidates = isProd ? [CMS_TMP_FILE, CMS_DATA_FILE] : [CMS_DATA_FILE];
+
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file)) {
+        const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+        return { gallery: parsed.gallery ?? {}, zones: parsed.zones ?? [], exhibits: parsed.exhibits ?? [], file };
+      }
+    } catch {
+      /* 文件缺失或 JSON 损坏则尝试下一个 */
+    }
+  }
+  return { gallery: {}, zones: [], exhibits: [], file: null };
+}
+
+/** 写回展品数据（保留 gallery/zones，仅替换 exhibits） */
+function writeExhibitsFile(exhibits) {
+  const isProd = process.env.COZE_PROJECT_ENV === 'PROD';
+  const current = readExhibitsFile();
+  const merged = {
+    gallery: current.gallery ?? {},
+    zones: current.zones ?? [],
+    exhibits,
+  };
+  const payload = JSON.stringify(merged, null, 2) + '\n';
+
+  if (isProd) {
+    // 生产环境 public 只读：写入 /tmp 仅临时生效，重新部署后丢失
+    fs.writeFileSync(CMS_TMP_FILE, payload, 'utf8');
+    return { persisted: false, warning: '生产环境为临时写入（/tmp），重新部署后会丢失；请导出 JSON 并更新仓库 public/data/exhibits.json。' };
+  }
+
+  fs.writeFileSync(CMS_DATA_FILE, payload, 'utf8');
+  return { persisted: true, warning: null };
+}
+
+async function handleCmsRoute(req, res, method, pathname) {
+  if (pathname === '/api/cms/exhibits') {
+    if (method === 'GET') {
+      const { gallery, zones, exhibits, file } = readExhibitsFile();
+      return sendJson(res, 200, { success: true, gallery, zones, exhibits, file });
+    }
+    if (method === 'PUT') {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (err) {
+        return sendError(res, 400, err?.message || '请求体解析失败');
+      }
+      const exhibits = body?.exhibits;
+      if (!Array.isArray(exhibits)) return sendError(res, 400, '缺少 exhibits 数组');
+      try {
+        const { persisted, warning } = writeExhibitsFile(exhibits);
+        return sendJson(res, 200, { success: true, persisted, warning, count: exhibits.length });
+      } catch (err) {
+        return sendError(res, 500, '写入失败：' + (err?.message || err));
+      }
+    }
+  }
+  return sendError(res, 404, '未知的 CMS 接口');
+}
+
+/* ------------------------------------------------------------------ */
 /* 请求分发（被 server.js 与 vite 中间件共同调用）                       */
 /* ------------------------------------------------------------------ */
 
@@ -550,9 +622,9 @@ export async function handleApiRequest(req, res) {
   // 依赖注入式错误捕获：每个 handle* 内部已捕获，这里兜底
   const method = req.method || 'GET';
 
-  // CORS（开发环境虽同源，但保留对跨域调试的友好支持）
+  // CORS（GET/POST/PUT；CMS 需要 GET 读 + PUT 写）
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (method === 'OPTIONS') {
@@ -561,11 +633,17 @@ export async function handleApiRequest(req, res) {
     return;
   }
 
+  const pathname = new URL(req.url, 'http://localhost').pathname;
+
+  // 策展后台 CMS：GET 读 / PUT 写（独立于 AI 的 POST-only 路由）
+  if (pathname.startsWith('/api/cms/')) {
+    return handleCmsRoute(req, res, method, pathname);
+  }
+
   if (method !== 'POST') {
     return sendError(res, 405, '仅支持 POST');
   }
 
-  const pathname = new URL(req.url, 'http://localhost').pathname;
   let body = null;
   try {
     body = await readJsonBody(req);
