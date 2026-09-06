@@ -548,6 +548,8 @@ async function handleGuide(req, res, body, customHeaders) {
 
 const CMS_DATA_FILE = path.join(process.cwd(), 'public', 'data', 'exhibits.json');
 const CMS_TMP_FILE = '/tmp/lumen-cms-exhibits.json';
+// 与 src/config/schema.ts 的 WORLD_LIMIT 保持一致（前后端契约共享，避免越界展品被展厅静默跳过）
+const WORLD_LIMIT = { x: 30, zMin: -19, zMax: 9 };
 
 /** 读取展品数据：生产优先读临时覆盖（编辑后立即预览），开发直接读仓库文件 */
 function readExhibitsFile() {
@@ -588,6 +590,54 @@ function writeExhibitsFile(exhibits) {
   return { persisted: true, warning: null };
 }
 
+/** 展品数据契约校验（与 src/config/schema.ts 的 ExhibitSchema + parseExhibitsFile 容错规则对齐，作为写库前的契约守门） */
+function validateExhibits(exhibits, zones) {
+  const allowedTypes = ['image', 'video', 'model', 'text', 'link'];
+  const allowedMounts = ['wall-frame', 'pedestal', 'vitrine', 'screen', 'panel'];
+  const zoneIds = new Set((zones ?? []).map((z) => z.id));
+  const seen = new Set();
+  const errors = [];
+  for (let i = 0; i < exhibits.length; i++) {
+    const e = exhibits[i] ?? {};
+    const tag = `第 ${i + 1} 件展品${e.id ? `（${e.id}）` : ''}`;
+    if (typeof e.id !== 'string' || !e.id.trim()) {
+      errors.push(`${tag}：缺少或非法的 id`);
+      continue;
+    }
+    if (seen.has(e.id)) {
+      errors.push(`${tag}：id「${e.id}」与其他展品重复`);
+      continue;
+    }
+    seen.add(e.id);
+    if (!allowedTypes.includes(e.type)) errors.push(`${tag}：type 非法（${e.type}）`);
+    if (!allowedMounts.includes(e.mount)) errors.push(`${tag}：mount 非法（${e.mount}）`);
+    if (typeof e.zone !== 'string' || !e.zone.trim()) {
+      errors.push(`${tag}：缺少 zone`);
+    } else if (!zoneIds.has(e.zone)) {
+      errors.push(`${tag}：所属展区「${e.zone}」不存在`);
+    }
+    if (typeof e.title !== 'string' || !e.title.trim()) errors.push(`${tag}：title 不能为空`);
+    if (typeof e.description !== 'string' || !e.description.trim()) errors.push(`${tag}：description 不能为空`);
+    const pos = e.position;
+    const posOk = Array.isArray(pos) && pos.length === 3 && pos.every((n) => typeof n === 'number' && Number.isFinite(n));
+    if (!posOk) {
+      errors.push(`${tag}：position 必须是 [x, y, z] 三个数字`);
+    } else {
+      const [px, , pz] = pos;
+      if (Math.abs(px) > WORLD_LIMIT.x || pz < WORLD_LIMIT.zMin || pz > WORLD_LIMIT.zMax) {
+        errors.push(`${tag}：坐标 (${px}, ${pz}) 越界（超出展厅边界）`);
+      }
+    }
+    if ((e.type === 'image' || e.type === 'video') && !e.src) {
+      errors.push(`${tag}：${e.type} 类型需要 src 素材路径`);
+    }
+    if (e.type === 'link' && !e.link) {
+      errors.push(`${tag}：link 类型需要 link 地址`);
+    }
+  }
+  return errors;
+}
+
 async function handleCmsRoute(req, res, method, pathname) {
   if (pathname === '/api/cms/exhibits') {
     if (method === 'GET') {
@@ -603,6 +653,10 @@ async function handleCmsRoute(req, res, method, pathname) {
       }
       const exhibits = body?.exhibits;
       if (!Array.isArray(exhibits)) return sendError(res, 400, '缺少 exhibits 数组');
+      const checkErrors = validateExhibits(exhibits, readExhibitsFile().zones);
+      if (checkErrors.length > 0) {
+        return sendJson(res, 400, { success: false, error: '展品数据未通过校验', errors: checkErrors });
+      }
       try {
         const { persisted, warning } = writeExhibitsFile(exhibits);
         return sendJson(res, 200, { success: true, persisted, warning, count: exhibits.length });

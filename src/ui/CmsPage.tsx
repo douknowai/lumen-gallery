@@ -88,6 +88,8 @@ export default function CmsPage() {
     setData((d) =>
       d ? { ...d, exhibits: d.exhibits.map((e) => (e.id === id ? ({ ...e, ...patchObj } as CmsExhibit) : e)) } : d,
     );
+    // 改了 id 时同步选中态，避免选中项因 id 变更而丢失
+    if (typeof patchObj.id === 'string' && patchObj.id !== id) setSelectedId(patchObj.id);
     setDirty(true);
   }
 
@@ -107,7 +109,13 @@ export default function CmsPage() {
 
   function addExhibit() {
     const zones = data?.zones ?? [];
-    const id = `X-${String((data?.exhibits.length ?? 0) + 1).padStart(2, '0')}`;
+    const existingIds = new Set((data?.exhibits ?? []).map((e) => e.id));
+    let n = 1;
+    let id = `X-${String(n).padStart(2, '0')}`;
+    while (existingIds.has(id)) {
+      n += 1;
+      id = `X-${String(n).padStart(2, '0')}`;
+    }
     const neo: CmsExhibit = {
       id,
       type: 'image',
@@ -132,6 +140,7 @@ export default function CmsPage() {
       focusRadius: 2.6,
       spotlight: true,
       modelScale: 1,
+      modelRotationDeg: 0,
       spin: false,
     };
     setData((d) => (d ? { ...d, exhibits: [...d.exhibits, neo] } : d));
@@ -157,7 +166,11 @@ export default function CmsPage() {
         body: JSON.stringify({ exhibits: data.exhibits }),
       });
       const j = await r.json();
-      if (!j.success) throw new Error(j.error || '保存失败');
+      if (!j.success) {
+        const detail = Array.isArray(j.errors) && j.errors.length ? `：${j.errors.join('；')}` : '';
+        setStatus({ ok: false, text: `${j.error || '保存失败'}${detail}` });
+        return;
+      }
       setDirty(false);
       setStatus({ ok: true, text: j.warning ?? `已保存 ${j.count} 件展品` });
     } catch (err) {
