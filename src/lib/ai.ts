@@ -51,10 +51,20 @@ export interface GuideCatalogItem {
   title?: string;
   titleEn?: string;
   artist?: string;
+  year?: string;
+  medium?: string;
   type?: string;
   zone?: string;
   zoneName?: string;
   description?: string;
+  /** 深度知识（供 RAG 语义检索增强） */
+  lore?: string;
+}
+
+/** 观众足迹：已经看过的展品（供导览员做「多轮记忆 + 用户画像」） */
+export interface GuideVisitedItem {
+  id?: string;
+  title?: string;
 }
 
 const UID_KEY = 'lumen.uid';
@@ -171,8 +181,15 @@ export async function* guideStream(
   catalog: GuideCatalogItem[],
   message: string,
   history: ChatMessage[],
+  visited: GuideVisitedItem[] = [],
 ): AsyncGenerator<string> {
-  yield* postSSEStream('/api/ai/guide', { uid: getUid(), catalog, message, history });
+  yield* postSSEStream('/api/ai/guide', {
+    uid: getUid(),
+    catalog,
+    message,
+    history,
+    visited,
+  });
 }
 
 /**

@@ -16,9 +16,17 @@
  * - 展品「人格」通过 system prompt 注入，做到数据驱动、每件展品有自己的故事；
  * - 对话采用 SSE 流式（打字机体验），口播/ TTS / ASR 为一次性结果。
  */
-import { LLMClient, TTSClient, ASRClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import {
+  LLMClient,
+  TTSClient,
+  ASRClient,
+  EmbeddingClient,
+  Config,
+  HeaderUtils,
+} from 'coze-coding-dev-sdk';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const DEFAULT_UID = 'lumen-visitor';
 const MAX_BODY_BYTES = 15 * 1024 * 1024; // 15MB（容纳录音 base64）
@@ -200,20 +208,175 @@ function guideCatalogText(catalog) {
     .join('\n');
 }
 
-function guideSystemPrompt(catalogText) {
+/* ------------------------------------------------------------------ */
+/* RAG：展品语义检索（Embedding 向量 + 余弦相似度，替代全量清单硬塞 prompt）*/
+/* ------------------------------------------------------------------ */
+
+/** 把一件展品的多字段拼成可向量化的检索文档 */
+function exhibitDocText(it) {
+  if (!it) return '';
+  const title = it.title || it.titleEn || '';
+  const artist = it.artist ? `艺术家：${it.artist}` : '';
+  const year = it.year ? `年代：${it.year}` : '';
+  const medium = it.medium ? `媒介：${it.medium}` : '';
+  const zone = it.zoneName || it.zone || '';
+  const desc = it.description || it.lore || '';
+  return [title, artist, year, medium, zone ? `展厅：${zone}` : '', desc]
+    .filter(Boolean)
+    .join('；');
+}
+
+/** 提取最近一条用户提问（作为检索 query） */
+function latestUserQuery(message, history) {
+  if (typeof message === 'string' && message.trim()) return message.trim();
+  if (Array.isArray(history)) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      const h = history[i];
+      if (h && h.role === 'user' && typeof h.content === 'string' && h.content.trim()) {
+        return h.content.trim();
+      }
+    }
+  }
+  return '';
+}
+
+function cosineSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length || a.length === 0) return 0;
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  if (!na || !nb) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+/** 展品向量索引缓存：catalog 确定性 hash -> { docs, embeddings } */
+const ragIndexCache = new Map();
+const RAG_CACHE_MAX = 4;
+
+function catalogHash(catalog) {
+  return crypto
+    .createHash('sha1')
+    .update(JSON.stringify(Array.isArray(catalog) ? catalog : []))
+    .digest('hex');
+}
+
+/** 并发为每件展品生成向量（失败项跳过），返回 { docs, embeddings } */
+async function buildExhibitIndex(catalog, customHeaders) {
+  const docs = (Array.isArray(catalog) ? catalog : [])
+    .filter(Boolean)
+    .map((it) => ({
+      id: it.id || it.title || it.titleEn,
+      title: it.title || it.titleEn || '未命名作品',
+      zone: it.zoneName || it.zone || '',
+      text: exhibitDocText(it),
+    }))
+    .filter((d) => d.text);
+
+  const client = new EmbeddingClient(new Config(), customHeaders);
+  const embeddings = await Promise.all(
+    docs.map((d) => client.embedText(d.text).catch(() => null)),
+  );
+  return { docs, embeddings };
+}
+
+/** 语义检索：按相关度召回 top-k；embedding 失败返回 null（供调用方降级） */
+async function retrieveExhibits(catalog, query, customHeaders, topK = 4) {
+  try {
+    const key = catalogHash(catalog);
+    let idx = ragIndexCache.get(key);
+    if (!idx) {
+      idx = await buildExhibitIndex(catalog, customHeaders);
+      ragIndexCache.set(key, idx);
+      if (ragIndexCache.size > RAG_CACHE_MAX) {
+        const oldest = ragIndexCache.keys().next().value;
+        ragIndexCache.delete(oldest);
+      }
+    }
+    const client = new EmbeddingClient(new Config(), customHeaders);
+    const qv = await client.embedText(query);
+    const scored = idx.docs
+      .map((d, i) => ({ ...d, score: cosineSimilarity(qv, idx.embeddings[i]) }))
+      .filter((d) => d.score > 0)
+      .sort((a, b) => b.score - a.score);
+    return scored.slice(0, topK);
+  } catch (err) {
+    return null;
+  }
+}
+
+function visitedText(visited) {
+  if (!Array.isArray(visited) || !visited.length) return '';
+  const names = visited
+    .filter(Boolean)
+    .map((v) => v.title || v.id || '')
+    .filter(Boolean);
+  if (!names.length) return '';
+  return `【这位观众已经看过的展品】\n${names.join('、')}`;
+}
+
+/** RAG 命中时的导览上下文：召回详情 + 轻量目录 + 观众足迹 */
+function guideRichContext(retrieved, catalog, visited) {
+  const parts = [];
+  const catalogArr = Array.isArray(catalog) ? catalog : [];
+
+  if (Array.isArray(retrieved) && retrieved.length) {
+    parts.push(
+      '【相关展品（按相关度排序，作为回答的主要事实依据）】\n' +
+        retrieved
+          .map((d, i) => {
+            const src =
+              catalogArr.find((c) => c && (c.id === d.id || c.title === d.title || c.titleEn === d.title)) ||
+              {};
+            const title = d.title || src.title || src.titleEn || '未命名作品';
+            const artist = src.artist ? `，艺术家 ${src.artist}` : '';
+            const zone = d.zone || src.zoneName || src.zone || '';
+            const desc = src.description ? `，简介：${src.description}` : '';
+            return `${i + 1}. 《${title}》${artist}${zone ? `，位于「${zone}」` : ''}${desc}`;
+          })
+          .join('\n'),
+    );
+  }
+
+  if (catalogArr.length) {
+    parts.push(
+      '【全馆作品目录（仅用于回答“有哪些作品/怎么参观”类问题）】\n' +
+        catalogArr
+          .filter(Boolean)
+          .map((it, i) => {
+            const title = it.title || it.titleEn || '未命名作品';
+            const zone = it.zoneName || it.zone || '';
+            return `${i + 1}. 《${title}》${zone ? `（${zone}）` : ''}`;
+          })
+          .join('、'),
+    );
+  }
+
+  const vtext = visitedText(visited);
+  if (vtext) parts.push(vtext);
+
+  return parts.join('\n\n');
+}
+
+function guideSystemPrompt(contextText) {
   return `你是 LUMEN「流明」3D 虚拟美术馆的官方导览员，正在为观众提供参观帮助。
 
 你可以回答观众关于展馆、展品、参观路线、推荐的问题，帮他们规划参观顺序、讲解展品亮点。
 
-请严格依据下面提供的展品清单作答：
-1. 只介绍清单里真实存在的作品，不要编造不存在的展品、艺术家或数据；
-2. 观众问「最值得看什么」「怎么参观」「有哪些作品」时，给出 2～4 件推荐并说明理由；
+请严格依据下面提供的展品资料作答：
+1. 只介绍资料里真实存在的作品，不要编造不存在的展品、艺术家或数据；
+2. 观众问「最值得看什么」「怎么参观」「有哪些作品」时，优先结合【相关展品】给出 2～4 件推荐并说明理由；
 3. 推荐展品时可以点名它所在的展厅，方便观众前往；
-4. 用简洁、自然、口语化的中文，一般控制在 2～5 句话内；
-5. 不要使用 Markdown 列表、编号或表情符号，直接说人话。
+4. 若观众问「这两件有什么关系」「风格怎么演变」这类跨作品问题，且资料中给出了多件相关作品，请说明它们在时代、主题、风格或流派上的关联与演变；
+5. 若提供了「观众已经看过的展品」，可自然地呼应（例如“你刚才在《××》那边…”），但不要生硬复述；
+6. 用简洁、自然、口语化的中文，一般控制在 2～5 句话内；
+7. 不要使用 Markdown 列表、编号或表情符号，直接说人话。
 
-【展品清单】
-${catalogText}`;
+${contextText}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -243,8 +406,8 @@ async function handleNarrate(req, res, body, customHeaders) {
     { role: 'user', content: userContent },
   ];
 
-  const llmConfig = { temperature: 0.75 };
-  if (imageDataUri) llmConfig.model = 'doubao-seed-1-8-251228'; // 多模态模型
+  const llmConfig = { temperature: 0.75, model: 'doubao-seed-2-0-lite-260215' };
+  if (imageDataUri) llmConfig.model = 'doubao-seed-2-0-pro-260215'; // 多模态「看图」用旗舰模型
 
   const reply = await llm.invoke(messages, llmConfig);
   const text = (reply?.content || '').trim();
@@ -276,7 +439,7 @@ async function handleChat(req, res, body, customHeaders) {
 
   try {
     const messages = buildMessages(chatSystemPrompt(exhibit), message, history);
-    const stream = llm.stream(messages, { temperature: 0.7 });
+    const stream = llm.stream(messages, { model: 'doubao-seed-2-0-lite-260215', temperature: 0.7 });
     for await (const chunk of stream) {
       const text = extractText(chunk?.content);
       if (text) writeSSE(res, { type: 'delta', content: text });
@@ -337,6 +500,7 @@ async function handleGuide(req, res, body, customHeaders) {
   const catalog = body?.catalog;
   const message = body?.message;
   const history = body?.history;
+  const visited = body?.visited;
 
   if (!message && !history?.length) {
     return sendError(res, 400, '缺少对话内容');
@@ -353,8 +517,19 @@ async function handleGuide(req, res, body, customHeaders) {
   const llm = new LLMClient(config, customHeaders);
 
   try {
-    const messages = buildMessages(guideSystemPrompt(guideCatalogText(catalog)), message, history);
-    const stream = llm.stream(messages, { temperature: 0.7 });
+    // RAG：语义召回相关展品；embedding 失败（null）时降级为全量清单
+    const query = latestUserQuery(message, history);
+    let retrieved = null;
+    if (query && Array.isArray(catalog) && catalog.length) {
+      retrieved = await retrieveExhibits(catalog, query, customHeaders, 4);
+    }
+    const vtext = visitedText(visited);
+    const contextText =
+      retrieved !== null
+        ? guideRichContext(retrieved, catalog, visited)
+        : guideCatalogText(catalog) + (vtext ? '\n\n' + vtext : '');
+    const messages = buildMessages(guideSystemPrompt(contextText), message, history);
+    const stream = llm.stream(messages, { model: 'doubao-seed-2-0-lite-260215', temperature: 0.7 });
     for await (const chunk of stream) {
       const text = extractText(chunk?.content);
       if (text) writeSSE(res, { type: 'delta', content: text });

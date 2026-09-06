@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Compass, Send, X } from 'lucide-react';
-import { useStore } from '@/state/store';
+import { useStore, selectVisitedExhibits } from '@/state/store';
 import { guideStream, loadGuideHistory, saveGuideHistory, type ChatMessage, type GuideCatalogItem } from '@/lib/ai';
 import { useI18n } from '@/lib/i18n';
 
@@ -44,10 +44,13 @@ export default function GuideAssistant() {
       title: e.title,
       titleEn: e.titleEn,
       artist: e.artist,
+      year: e.year,
+      medium: e.medium,
       type: e.type,
       zone: e.zone,
       zoneName: zoneNameOf(e.zone),
       description: e.description,
+      lore: e.lore,
     }));
   }, [data]);
 
@@ -70,7 +73,9 @@ export default function GuideAssistant() {
       let full = '';
       try {
         const history = historyRef.current.slice(0, -1).slice(-8);
-        for await (const delta of guideStream(catalog, text, history)) {
+        // 观众足迹（已看过的展品），供导览员个性化呼应
+        const visited = selectVisitedExhibits(useStore.getState());
+        for await (const delta of guideStream(catalog, text, history, visited)) {
           full += delta;
           setStreaming(full);
         }

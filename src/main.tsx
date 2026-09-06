@@ -28,6 +28,15 @@ if (import.meta.env.DEV) {
   console.info('[LUMEN] dev hook ready: window.__lumen { teleport, look, state }');
 }
 
+// PWA：生产环境注册 service worker 实现离线缓存（开发环境不注册，避免干扰 HMR）
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* 注册失败静默忽略，不影响主流程 */
+    });
+  });
+}
+
 // 注意：不使用 StrictMode（会导致 Canvas 效果重复执行）
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>

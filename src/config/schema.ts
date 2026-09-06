@@ -33,6 +33,8 @@ export const ExhibitSchema = z.object({
   credit: z.string().optional(),
   description: z.string().min(1),
   descriptionEn: z.string().optional(),
+  /** 深度知识（艺术史考据 / 作品关联 / 时代背景），供 RAG 语义检索增强导览 */
+  lore: z.string().optional(),
   src: z.string().optional(),
   poster: z.string().optional(),
   link: z.string().optional(),

@@ -45,4 +45,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // three / recharts 为单体大依赖，单独成 chunk 提升并行加载与 PWA 长期缓存命中；阈值贴合重 3D 应用实际体量
+    chunkSizeWarningLimit: 1600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ["three"],
+          charts: ["recharts"],
+        },
+      },
+    },
+  },
 });

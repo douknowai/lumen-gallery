@@ -111,6 +111,8 @@ export interface Store {
   focusedId: string | null;
   /** 弹窗中的展品 id */
   modalId: string | null;
+  /** 已打开（看过）的展品 id 足迹，供 AI 导览员做用户画像 */
+  visitedExhibits: string[];
   /** 灯箱打开（图片源） */
   lightboxSrc: string | null;
   /** 指针锁定状态 */
@@ -196,6 +198,7 @@ export const useStore = create<Store>((set, get) => ({
   visitedZones: ['hall'],
   focusedId: null,
   modalId: null,
+  visitedExhibits: [],
   lightboxSrc: null,
   pointerLocked: false,
   isMobile: false,
@@ -245,7 +248,13 @@ export const useStore = create<Store>((set, get) => ({
         : { zone: z, visitedZones: s.visitedZones.includes(z) ? s.visitedZones : [...s.visitedZones, z] },
     ),
   setFocused: (id) => set((s) => (s.focusedId === id ? s : { focusedId: id })),
-  openModal: (id) => set({ appState: 'modal', modalId: id, focusedId: null }),
+  openModal: (id) =>
+    set((s) => ({
+      appState: 'modal',
+      modalId: id,
+      focusedId: null,
+      visitedExhibits: s.visitedExhibits.includes(id) ? s.visitedExhibits : [...s.visitedExhibits, id],
+    })),
   closeModal: () =>
     set((s) => ({
       appState: 'explore',
@@ -328,6 +337,18 @@ export function selectModalExhibit(s: Store): Exhibit | null {
 export function selectCallExhibit(s: Store): Exhibit | null {
   if (!s.data || !s.callExhibitId) return null;
   return s.data.exhibits.find((e) => e.id === s.callExhibitId) ?? null;
+}
+
+/** 观众足迹（已看过的展品 id + 标题），供 AI 导览员做用户画像 */
+export function selectVisitedExhibits(s: Store): { id: string; title: string }[] {
+  const data = s.data;
+  if (!data) return [];
+  return s.visitedExhibits
+    .map((id) => {
+      const e = data.exhibits.find((x) => x.id === id);
+      return e ? { id: e.id, title: e.title } : null;
+    })
+    .filter((x): x is { id: string; title: string } => x !== null);
 }
 
 /**

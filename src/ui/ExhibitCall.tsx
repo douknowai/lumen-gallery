@@ -48,6 +48,11 @@ function pickMimeType(): string {
 const MIN_ASR_SECONDS = 0.3;
 const MAX_VAD_SEGMENT_SECONDS = 20;
 
+/** 免提滚动增量识别（准流式字幕）：说话中每隔多少毫秒采样一次已录内容做转写 */
+const PARTIAL_ASR_INTERVAL = 1400;
+/** 增量识别的最小累积时长（秒），低于此值识别不稳定 */
+const MIN_PARTIAL_ASR_SECONDS = 0.7;
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -120,6 +125,8 @@ export default function ExhibitCall() {
   const [recording, setRecording] = useState(false);
   const [vadActive, setVadActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 免提说话过程中实时转写出来的“你正在说”字幕（准流式），断句后清空 */
+  const [partialText, setPartialText] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -131,12 +138,16 @@ export default function ExhibitCall() {
   const inAsrRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const vadRef = useRef<VadRef>(createVadRef());
+  /** 增量识别的状态：串行锁 + 上一次完整文本 + 上次采样时间 */
+  const partialAsrRef = useRef({ inFlight: false, lastText: '', lastRunMs: 0 });
 
   const onSpeakStartRef = useRef<() => void>(() => {});
   const onSegmentEndRef = useRef<(blob: Blob) => void>(() => {});
   const pressStartRef = useRef<() => void>(() => {});
   const pressEndRef = useRef<() => void>(() => {});
   const toggleVadRef = useRef<() => void>(() => {});
+  /** detectVad 是空依赖循环，通过 ref 间接调用最新的 runPartialAsr */
+  const runPartialAsrRef = useRef<() => void>(() => {});
 
   const isBusy = busy !== null;
 
@@ -312,6 +323,40 @@ export default function ExhibitCall() {
     [handleUserMessage],
   );
 
+  /** 免提滚动增量识别（准流式字幕）：说话中采样已录内容做转写，不触发正式对话 */
+  const runPartialAsr = useCallback(async () => {
+    const v = vadRef.current;
+    const pa = partialAsrRef.current;
+    if (!v.speaking || v.recorder?.state !== 'recording') return;
+    if (pa.inFlight || inAsrRef.current || v.chunks.length < 3) return;
+    const blob = new Blob(v.chunks.slice(), { type: v.recorder.mimeType || 'audio/webm' });
+    if (blob.size < 2400) return;
+    pa.inFlight = true;
+    try {
+      const { base64, seconds } = await encodeAudioToBase64Wav(blob);
+      if (seconds < MIN_PARTIAL_ASR_SECONDS || !aliveRef.current) return;
+      const { text } = await asr(base64);
+      if (!aliveRef.current) return;
+      const full = (text || '').trim();
+      if (!full) return;
+      const prev = pa.lastText;
+      let partial: string | null = null;
+      if (!prev) {
+        partial = full;
+      } else if (full.startsWith(prev)) {
+        partial = full.slice(prev.length).trim() || null;
+      } else if (full.length > prev.length) {
+        partial = full;
+      }
+      if (partial) setPartialText(partial);
+      pa.lastText = full;
+    } catch {
+      /* 增量识别失败静默忽略，正式断句识别不受影响 */
+    } finally {
+      pa.inFlight = false;
+    }
+  }, []);
+
   /* ---------- 按住说话（push 模式） ---------- */
   const stopRecording = useCallback(() => {
     const recorder = mediaRecorderRef.current;
@@ -459,6 +504,13 @@ export default function ExhibitCall() {
         }
       } else {
         v.silenceMs = 0;
+        // 准流式字幕：说话中周期性采样已录内容做增量转写
+        const now = Date.now();
+        const pa = partialAsrRef.current;
+        if (!pa.inFlight && now - pa.lastRunMs >= PARTIAL_ASR_INTERVAL) {
+          pa.lastRunMs = now;
+          void runPartialAsrRef.current();
+        }
       }
     }
   }, []);
@@ -496,7 +548,11 @@ export default function ExhibitCall() {
         if (vadRef.current.recorder !== recorder) return;
         const seg = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
         chunks.length = 0;
-        if (aliveRef.current) onSegmentEndRef.current(seg);
+        if (aliveRef.current) {
+          setPartialText(null);
+          partialAsrRef.current.lastText = '';
+          onSegmentEndRef.current(seg);
+        }
       };
       // 注意：这里不在启动时就 start()。由 VAD 检测到开口才 start、断句时 stop，
       // 保证每个片段的 chunks 都从第一个数据块（含容器头）开始，是独立完整可解码文件
@@ -592,6 +648,7 @@ export default function ExhibitCall() {
     pressStartRef.current = handlePressStart;
     pressEndRef.current = handlePressEnd;
     toggleVadRef.current = toggleVad;
+    runPartialAsrRef.current = runPartialAsr;
   });
 
   /* ---------- 空格键按住说话 ---------- */
@@ -668,14 +725,21 @@ export default function ExhibitCall() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {lastUser && busy !== 'asr' && !recording && (
+        {recording && partialText ? (
+          <div
+            className="max-w-[min(680px,92vw)] rounded-full px-3.5 py-1 text-[12.5px]"
+            style={{ background: 'rgba(20,18,15,.55)', color: 'rgba(244,241,234,.8)' }}
+          >
+            {t('call.you')}：{partialText}…
+          </div>
+        ) : lastUser && busy !== 'asr' && !recording ? (
           <div
             className="max-w-[min(680px,92vw)] rounded-full px-3.5 py-1 text-[12.5px]"
             style={{ background: 'rgba(20,18,15,.55)', color: 'rgba(244,241,234,.8)' }}
           >
             {t('call.you')}：{lastUser}
           </div>
-        )}
+        ) : null}
         <div
           className="max-w-[min(760px,94vw)] whitespace-pre-wrap rounded-xl px-5 py-2.5 text-center text-[15px] leading-relaxed"
           style={{

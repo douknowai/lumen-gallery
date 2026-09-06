@@ -1,0 +1,20 @@
+{
+  "name": "LUMEN 流明 · 3D 虚拟展览馆",
+  "short_name": "LUMEN",
+  "description": "基于 WebXR 与 AIGC 的沉浸式虚拟美术馆——经典的回响",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#f4f1ea",
+  "theme_color": "#1f1c16",
+  "icons": [
+    {
+      "src": "/assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
