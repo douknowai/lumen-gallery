@@ -23,7 +23,9 @@ import {
   EmbeddingClient,
   Config,
   HeaderUtils,
+  S3Storage,
 } from 'coze-coding-dev-sdk';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -654,7 +656,7 @@ const CMS_TMP_FILE = '/tmp/lumen-cms-exhibits.json';
 // 与 src/config/schema.ts 的 WORLD_LIMIT 保持一致（前后端契约共享，避免越界展品被展厅静默跳过）
 const WORLD_LIMIT = { x: 30, zMin: -19, zMax: 9 };
 
-/** 读取展品数据：生产优先读临时覆盖（编辑后立即预览），开发直接读仓库文件 */
+/** 读取展品数据（文件链）：生产优先读临时覆盖（编辑后立即预览），开发直接读仓库文件 */
 function readExhibitsFile() {
   const isProd = process.env.COZE_PROJECT_ENV === 'PROD';
   const candidates = isProd ? [CMS_TMP_FILE, CMS_DATA_FILE] : [CMS_DATA_FILE];
@@ -672,8 +674,71 @@ function readExhibitsFile() {
   return { gallery: {}, zones: [], exhibits: [], file: null };
 }
 
-/** 写回展品数据（保留 gallery/zones，仅替换 exhibits） */
-function writeExhibitsFile(exhibits) {
+/* ---- 生产环境持久化：Supabase 快照（可用时写入跨部署存活；不可用时静默回退文件链） ---- */
+let supabaseClientCache = null;
+function getSupabase() {
+  if (supabaseClientCache !== null) return supabaseClientCache;
+  const url = process.env.COZE_SUPABASE_URL;
+  const key = process.env.COZE_SUPABASE_SERVICE_ROLE_KEY || process.env.COZE_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    supabaseClientCache = false;
+    return supabaseClientCache;
+  }
+  try {
+    // 服务端持有 privileged key（service_role 优先），RLS 不放行 anon/authenticated
+    supabaseClientCache = createSupabaseClient(url, key, { auth: { persistSession: false } });
+  } catch (err) {
+    console.warn('[CMS] Supabase 初始化失败，持久化回退文件模式：', err?.message || err);
+    supabaseClientCache = false;
+  }
+  return supabaseClientCache;
+}
+
+async function readSupabasePayload() {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from('cms_snapshots').select('payload, updated_at').eq('id', 'exhibits').maybeSingle();
+    if (error) throw error;
+    return data?.payload ?? null;
+  } catch (err) {
+    console.warn('[CMS] Supabase 读取失败，回退文件链：', err?.message || err);
+    return null;
+  }
+}
+
+async function writeSupabasePayload(exhibits) {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from('cms_snapshots').upsert({ id: 'exhibits', payload: exhibits, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.warn('[CMS] Supabase 写入失败：', err?.message || err);
+    return false;
+  }
+}
+
+/** 展品读取总入口（异步）：生产环境 tmp → Supabase → 仓库文件；开发环境仅仓库文件 */
+async function loadExhibits() {
+  const isProd = process.env.COZE_PROJECT_ENV === 'PROD';
+  const fromFile = readExhibitsFile();
+  if (!isProd) return fromFile;
+  if (fromFile.file === CMS_TMP_FILE && fromFile.file) return fromFile;
+  const payload = await readSupabasePayload();
+  if (Array.isArray(payload?.exhibits)) {
+    return { gallery: payload.gallery ?? {}, zones: payload.zones ?? [], exhibits: payload.exhibits, file: 'supabase:cms_snapshots' };
+  }
+  return fromFile;
+}
+
+function supabasePersistenceReady() {
+  return Boolean(getSupabase());
+}
+
+/** 写回展品数据（保留 gallery/zones，仅替换 exhibits）。生产环境：/tmp 即时生效 + Supabase 跨部署持久化 */
+async function writeExhibitsFile(exhibits) {
   const isProd = process.env.COZE_PROJECT_ENV === 'PROD';
   const current = readExhibitsFile();
   const merged = {
@@ -684,13 +749,20 @@ function writeExhibitsFile(exhibits) {
   const payload = JSON.stringify(merged, null, 2) + '\n';
 
   if (isProd) {
-    // 生产环境 public 只读：写入 /tmp 仅临时生效，重新部署后丢失
     fs.writeFileSync(CMS_TMP_FILE, payload, 'utf8');
-    return { persisted: false, warning: '生产环境为临时写入（/tmp），重新部署后会丢失；请导出 JSON 并更新仓库 public/data/exhibits.json。' };
+    const savedToSupabase = await writeSupabasePayload(merged);
+    if (savedToSupabase) {
+      return { persisted: true, warning: null, persistence: 'supabase' };
+    }
+    return {
+      persisted: false,
+      persistence: 'file',
+      warning: '已临时写入（/tmp）并立即生效，但 Supabase 持久化不可用：重新部署后会丢失。请在 Supabase 中确认 cms_snapshots 表与凭据配置。',
+    };
   }
 
   fs.writeFileSync(CMS_DATA_FILE, payload, 'utf8');
-  return { persisted: true, warning: null };
+  return { persisted: true, warning: null, persistence: 'file' };
 }
 
 /** 展品数据契约校验（与 src/config/schema.ts 的 ExhibitSchema + parseExhibitsFile 容错规则对齐，作为写库前的契约守门） */
@@ -742,12 +814,45 @@ function validateExhibits(exhibits, zones) {
 }
 
 async function handleCmsRoute(req, res, method, pathname) {
+  /* ---- 访问保护：配置 CMS_PASSCODE 后，写操作需携带口令换取的 Bearer 令牌 ---- */
+  if (pathname === '/api/cms/auth-status') {
+    return sendJson(res, 200, { success: true, required: cmsAuthRequired(), persistence: supabasePersistenceReady() ? 'supabase' : 'file' });
+  }
+  if (pathname === '/api/cms/auth' && method === 'POST') {
+    let body;
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      return sendError(res, 400, err?.message || '请求体解析失败');
+    }
+    const passcode = String(body?.passcode ?? '');
+    if (!cmsAuthRequired()) {
+      return sendJson(res, 200, { success: true, token: '', required: false });
+    }
+    const expected = process.env.CMS_PASSCODE || '';
+    const ok = passcode.length === expected.length
+      && crypto.timingSafeEqual(Buffer.from(passcode), Buffer.from(expected));
+    if (!ok) return sendJson(res, 401, { success: false, error: '口令不正确' });
+    return sendJson(res, 200, { success: true, token: cmsTokenFor(passcode), required: true });
+  }
+
   if (pathname === '/api/cms/exhibits') {
     if (method === 'GET') {
-      const { gallery, zones, exhibits, file } = readExhibitsFile();
-      return sendJson(res, 200, { success: true, gallery, zones, exhibits, file });
+      const { gallery, zones, exhibits, file } = await loadExhibits();
+      return sendJson(res, 200, {
+        success: true,
+        gallery,
+        zones,
+        exhibits,
+        file,
+        persistence: supabasePersistenceReady() ? 'supabase' : 'file',
+        authRequired: cmsAuthRequired(),
+      });
     }
     if (method === 'PUT') {
+      if (!cmsAuthorized(req)) {
+        return sendJson(res, 401, { success: false, error: '未授权：请先输入访问口令', needAuth: true });
+      }
       let body;
       try {
         body = await readJsonBody(req);
@@ -761,14 +866,134 @@ async function handleCmsRoute(req, res, method, pathname) {
         return sendJson(res, 400, { success: false, error: '展品数据未通过校验', errors: checkErrors });
       }
       try {
-        const { persisted, warning } = writeExhibitsFile(exhibits);
-        return sendJson(res, 200, { success: true, persisted, warning, count: exhibits.length });
+        const { persisted, warning, persistence } = await writeExhibitsFile(exhibits);
+        return sendJson(res, 200, { success: true, persisted, warning, persistence, count: exhibits.length });
       } catch (err) {
         return sendError(res, 500, '写入失败：' + (err?.message || err));
       }
     }
   }
+
+  /* ---- 素材上传（base64 JSON，避免 multipart 解析）→ 对象存储 → 同源稳定代理 URL ---- */
+  if (pathname === '/api/cms/upload' && method === 'POST') {
+    return handleCmsUpload(req, res);
+  }
+
+  /* ---- 素材访问代理：/api/cms/assets/<key> → 按需读取对象存储并回源 ---- */
+  if (pathname.startsWith('/api/cms/assets/') && method === 'GET') {
+    return handleCmsAsset(res, pathname);
+  }
+
   return sendError(res, 404, '未知的 CMS 接口');
+}
+
+/* ---- CMS 口令保护实现：令牌 = sha256(口令 + 服务端盐)，无状态、不可反推 ---- */
+function cmsAuthRequired() {
+  return Boolean(process.env.CMS_PASSCODE);
+}
+
+function cmsTokenFor(passcode) {
+  return crypto.createHash('sha256').update(`${passcode}::${process.env.CMS_PASSCODE}::lumen-cms`).digest('hex');
+}
+
+function cmsAuthorized(req) {
+  if (!cmsAuthRequired()) return true;
+  const auth = req.headers?.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) return false;
+  const expected = cmsTokenFor(process.env.CMS_PASSCODE || '');
+  if (token.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+}
+
+/* ---- 素材上传：写入对象存储，返回同源代理 URL（持久化存稳定路径，不存签名 URL） ---- */
+const storage = new S3Storage();
+const CMS_ASSET_EXT = {
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+  'image/gif': '.gif', 'image/avif': '.avif', 'image/svg+xml': '.svg',
+  'video/mp4': '.mp4', 'video/webm': '.webm',
+};
+const CMS_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+async function handleCmsUpload(req, res) {
+  try {
+    if (!cmsAuthorized(req)) {
+      return sendJson(res, 401, { success: false, error: '未授权：请先输入访问口令', needAuth: true });
+    }
+    const body = await readJsonBody(req);
+    const mime = body?.contentType && Object.prototype.hasOwnProperty.call(CMS_ASSET_EXT, body.contentType)
+      ? body.contentType
+      : null;
+    if (!mime) return sendError(res, 400, '不支持的文件类型（仅图片 / mp4 / webm）');
+    if (typeof body?.dataBase64 !== 'string' || body.dataBase64.length === 0) {
+      return sendError(res, 400, '缺少文件内容');
+    }
+    const raw = Buffer.from(body.dataBase64, 'base64');
+    if (raw.length === 0) return sendError(res, 400, '文件内容为空');
+    if (raw.length > CMS_MAX_UPLOAD_BYTES) return sendError(res, 413, '文件过大（上限 20MB）');
+
+    const safeName = String(body?.fileName || 'asset')
+      .split(/[\\/]/).pop()
+      .replace(/[^\w.\-]+/g, '_')
+      .slice(0, 60) || 'asset';
+    const key = await storage.uploadFile({
+      fileContent: raw,
+      fileName: `cms-assets/${Date.now()}_${safeName}${CMS_ASSET_EXT[mime]}`,
+      contentType: mime,
+    });
+    return sendJson(res, 200, { success: true, key, url: `/api/cms/assets/${encodeURIComponent(key)}` });
+  } catch (err) {
+    console.error('[CMS] upload failed:', err);
+    return sendError(res, 502, '素材上传失败：' + (err?.message || err));
+  }
+}
+
+async function handleCmsAsset(res, pathname) {
+  const key = decodeURIComponent(pathname.replace(/^\/api\/cms\/assets\//, ''));
+  if (!key || key.includes('..') || key.startsWith('/')) {
+    return sendError(res, 400, '非法资源路径');
+  }
+  try {
+    const buf = await storage.readFile({ fileKey: key });
+    const ext = `.${(key.split('.').pop() || '').toLowerCase()}`;
+    const mime = Object.keys(CMS_ASSET_EXT).find((m) => CMS_ASSET_EXT[m] === ext) || 'application/octet-stream';
+    res.writeHead(200, { 'Content-Type': mime, 'Content-Length': buf.length, 'Cache-Control': 'public, max-age=86400' });
+    res.end(buf);
+  } catch (err) {
+    return sendError(res, 404, '素材不存在或读取失败');
+  }
+}
+
+/* ---- AI 辅助策展：lore 考据草稿生成（明确标注为草稿，供策展人改定后入库） ---- */
+async function handleLoreDraft(req, res, body, customHeaders) {
+  try {
+    const title = String(body?.title || '').trim();
+    if (!title) return sendError(res, 400, '缺少展品标题');
+    const lang = body?.lang === 'en' ? 'en' : 'zh';
+    const facts = [body?.description, body?.artist, body?.year, body?.medium]
+      .filter((v) => typeof v === 'string' && v.trim())
+      .join('\n');
+
+    const prompt = lang === 'en'
+      ? `You are the research curator of LUMEN, a 3D virtual art museum. Based ONLY on the verified facts below, draft a short background note (80-120 words) for the artwork "${title}". Cover: creation context, one stylistic hallmark, and one interesting anecdote or reception detail. Plain prose, no headings, no bullet points. Start with the literal line "[DRAFT — curator review required]" on its own first line. If facts are insufficient, say so explicitly and stay conservative — never invent specifics like dates or attributions.\n\nKnown facts:\n${facts || '(none beyond the title)'}`
+      : `你是 LUMEN「流明」3D 虚拟美术馆的研究策展人。请仅依据下面给出的已核实信息，为作品《${title}》撰写一段背景考据草稿（80~120 字），内容覆盖：创作语境、一个风格特征、一件有趣的轶事或接受史细节。纯散文，不要标题、不要分点。第一行单独输出「【草稿 · 待策展人审校】」。若已知信息不足，请明确说明并保持保守——绝不编造具体年代、归属或事件。\n\n已知信息：\n${facts || '（仅有标题，无其他资料）'}`;
+
+    const config = new Config();
+    const llm = new LLMClient(config, customHeaders);
+    const reply = await llm.invoke(
+      [
+        { role: 'system', content: prompt },
+        { role: 'user', content: lang === 'en' ? `Draft the note for "${title}".` : `请为《${title}》生成考据草稿。` },
+      ],
+      { model: 'doubao-seed-2-0-lite-260215', temperature: 0.6 },
+    );
+    const text = String(reply?.content || '').trim();
+    if (!text) return sendError(res, 502, '草稿生成结果为空');
+    return sendJson(res, 200, { success: true, text });
+  } catch (err) {
+    console.error('[AI] lore-draft failed:', err);
+    return sendError(res, 500, '草稿生成失败：' + (err?.message || err));
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -782,7 +1007,7 @@ export async function handleApiRequest(req, res) {
   // CORS（GET/POST/PUT；CMS 需要 GET 读 + PUT 写）
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (method === 'OPTIONS') {
     res.writeHead(204);
@@ -811,6 +1036,7 @@ export async function handleApiRequest(req, res) {
   const customHeaders = HeaderUtils.extractForwardHeaders(normalizeHeaders(req.headers));
 
   try {
+    if (pathname.endsWith('/lore-draft')) return await handleLoreDraft(req, res, body, customHeaders);
     if (pathname.endsWith('/narrate')) return await handleNarrate(req, res, body, customHeaders);
     if (pathname.endsWith('/chat')) return await handleChat(req, res, body, customHeaders);
     if (pathname.endsWith('/tts')) return await handleTTS(req, res, body, customHeaders);

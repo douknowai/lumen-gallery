@@ -19,10 +19,12 @@ import Toasts from '@/ui/Toasts';
 import { useStore } from '@/state/store';
 import { useGalleryLoader } from '@/hooks/useGalleryLoader';
 import { useKeyboard } from '@/systems/controls/useKeyboard';
+import { useCmsPreview } from '@/hooks/useCmsPreview';
 
 export default function App() {
   useGalleryLoader();
   useKeyboard();
+  useCmsPreview();
   const appState = useStore((s) => s.appState);
   const callExhibitId = useStore((s) => s.callExhibitId);
 
