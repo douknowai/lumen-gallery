@@ -98,6 +98,11 @@ class SensingEngine {
     return this.focusStartedAt > 0 ? now - this.focusStartedAt : 0;
   }
 
+  /** 清零驻足计时（观众打开弹窗阅读后调用，避免「刚读完就被搭话」） */
+  clearFocusDwell(): void {
+    this.focusStartedAt = 0;
+  }
+
   /** 时间窗口内的聚焦切换次数（徘徊信号） */
   focusSwitchCountIn(windowMs: number, now = Date.now()): number {
     return this.focusSwitches.filter((t) => now - t <= windowMs).length;

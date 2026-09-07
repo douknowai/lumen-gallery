@@ -33,6 +33,7 @@ interface NudgeState {
 export default function ProactiveNudge() {
   const isMobile = useStore((s) => s.isMobile);
   const data = useStore((s) => s.data);
+  const appState = useStore((s) => s.appState);
   const focusedId = useStore((s) => s.focusedId);
   const guideOpen = useStore((s) => s.guideOpen);
   const seedGuide = useStore((s) => s.seedGuide);
@@ -124,6 +125,12 @@ export default function ProactiveNudge() {
     if (focusedId) sensing.recordFocusChange();
   }, [focusedId]);
 
+  /* 离开 explore（打开弹窗/通话/灯箱阅读）→ 清零驻足计时：
+     读完介绍回来不应立刻对同一件展品触发「驻足犹豫」 */
+  useEffect(() => {
+    if (appState !== 'explore') sensing.clearFocusDwell();
+  }, [appState]);
+
   /* 主轮询：触发判定 + 流式生成 */
   useEffect(() => {
     let alive = true;
@@ -213,13 +220,13 @@ export default function ProactiveNudge() {
     openGuide();
   }, [dismiss, openGuide]);
 
-  if (!nudge) return null;
-
+  /* 始终保持 AnimatePresence 挂载，保证 nudge 收起时有淡出动画 */
   return (
     <AnimatePresence>
-      <motion.div
-        key="proactive-nudge"
-        className="pointer-events-auto fixed left-1/2 z-[44] -translate-x-1/2"
+      {nudge && (
+        <motion.div
+          key="proactive-nudge"
+          className="pointer-events-auto fixed left-1/2 z-[44] -translate-x-1/2"
         style={{
           bottom: `calc(env(safe-area-inset-bottom) + ${isMobile ? '10rem' : '5.5rem'})`,
           width: isMobile ? 'calc(100vw - 24px)' : 'min(520px, calc(100vw - 3rem))',
@@ -275,7 +282,8 @@ export default function ProactiveNudge() {
             )}
           </div>
         </div>
-      </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }
