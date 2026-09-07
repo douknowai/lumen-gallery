@@ -12,6 +12,8 @@ import CharacterSelector from '@/ui/CharacterSelector';
 import ExhibitModal from '@/ui/ExhibitModal';
 import ExhibitCall from '@/ui/ExhibitCall';
 import GuideAssistant from '@/ui/GuideAssistant';
+import PresenceMonitor from '@/systems/sensing/PresenceMonitor';
+import ProactiveNudge from '@/ui/ProactiveNudge';
 import Lightbox from '@/ui/Lightbox';
 import Toasts from '@/ui/Toasts';
 import { useStore } from '@/state/store';
@@ -34,6 +36,9 @@ export default function App() {
       <ExhibitModal />
       {callExhibitId && <ExhibitCall key={callExhibitId} />}
       <GuideAssistant />
+      {/* AGENT 自检测：摄像头感知（opt-in）+ 主动导览触发器 */}
+      <PresenceMonitor />
+      <ProactiveNudge />
       <Lightbox />
       <LoadingOverlay />
     </>

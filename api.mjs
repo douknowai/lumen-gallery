@@ -379,6 +379,87 @@ function guideSystemPrompt(contextText) {
 ${contextText}`;
 }
 
+/**
+ * 主动搭话系统提示词（AGENT 自检测：proactive 模式）。
+ * 场景：系统检测到观众驻足犹豫 / 迷失 / 徘徊 / 看得出神，由导览员主动发起一句简短搭话。
+ * 与问答模式的最大差异：只输出一句话、必须具体、必须留钩子、绝不问「需要帮助吗」。
+ */
+function guideProactiveSystemPrompt(contextText, p) {
+  const lang = p?.lang === 'en' ? 'en' : 'zh';
+  const reason = typeof p?.reason === 'string' ? p.reason : 'lost';
+
+  const reasonZh = {
+    hesitate: '观众在某件作品前驻足良久，但还没有打开详细介绍',
+    lost: '观众在展厅里停了下来，似乎不确定接下来看什么、去哪里',
+    wander: '观众在几件作品之间来回犹豫，拿不定主意',
+    related: '观众正在一件作品前看得出神',
+  }[reason] || '观众在参观中出现了片刻停顿';
+  const reasonEn = {
+    hesitate: 'The visitor has been standing in front of a work for a while without opening its details',
+    lost: 'The visitor has stopped and seems unsure what to see next or where to go',
+    wander: 'The visitor keeps switching between several works, unable to decide',
+    related: 'The visitor is gazing at a work with great interest',
+  }[reason] || 'The visitor has paused during the tour';
+
+  const linesZh = [
+    p?.zoneName ? `当前所在展厅：「${p.zoneName}」` : '',
+    p?.focusTitle
+      ? `面前驻足的作品：《${p.focusTitle}》${p.dwellSeconds ? `（约 ${p.dwellSeconds} 秒）` : ''}`
+      : '',
+    Array.isArray(p?.nearbyTitles) && p.nearbyTitles.length ? `附近作品：《${p.nearbyTitles.join('》《')}》` : '',
+    p?.mood === 'delighted' ? '观众看得津津有味，可顺势推荐一件相关联的作品。' : '',
+    p?.mood === 'confused' ? '观众似乎有些困惑，语气更耐心，从一个简单的切入点讲起。' : '',
+  ].filter(Boolean);
+
+  const linesEn = [
+    p?.zoneName ? `Current zone: "${p.zoneName}"` : '',
+    p?.focusTitle
+      ? `Work they are standing before: "${p.focusTitle}"${p.dwellSeconds ? ` (about ${p.dwellSeconds}s)` : ''}`
+      : '',
+    Array.isArray(p?.nearbyTitles) && p.nearbyTitles.length ? `Nearby works: ${p.nearbyTitles.join(', ')}` : '',
+    p?.mood === 'delighted'
+      ? 'The visitor seems delighted — naturally recommend one related work.'
+      : '',
+    p?.mood === 'confused'
+      ? 'The visitor seems puzzled — be extra patient and start from one simple point.'
+      : '',
+  ].filter(Boolean);
+
+  if (lang === 'en') {
+    return `You are the official guide of LUMEN, a 3D virtual art museum.
+Right now you are NOT answering a question — the sensing layer detected the visitor's state, and you are proactively starting a SHORT conversation.
+
+[Visitor state]
+- Why you are reaching out: ${reasonEn}
+${linesEn.map((l) => '- ' + l).join('\n')}
+
+Ground strictly on the material below (never invent works):
+${contextText}
+
+[Rules]
+1. Output ONLY the greeting itself: one sentence, at most 25 words, no quotes, no prefix, no explanation;
+2. Be specific: name the work or the zone and give one real reason to look closer;
+3. Warm, calm curator tone, like a quiet whisper beside the visitor; NEVER say "Do you need help?";
+4. End with a gentle hook the visitor can respond to (e.g. "Shall I tell you about...?").`;
+  }
+
+  return `你是 LUMEN「流明」3D 虚拟美术馆的官方导览员。
+此刻你不是在回答观众提问，而是系统检测到观众的状态后，由你**主动发起一次简短搭话**。
+
+【观众当下的状态】
+- 主动搭话的原因：${reasonZh}
+${linesZh.map((l) => '- ' + l).join('\n')}
+
+请严格依据下面提供的展品资料作答（不要编造）：
+${contextText}
+
+【搭话要求】
+1. 只输出搭话内容本身：一句话，不超过 40 个字，不要引号、前缀或任何多余说明；
+2. 必须具体：点名作品或展厅，并给出一个真实的看点或推荐理由；
+3. 语气自然、克制，像策展人在耳边轻声提醒，绝不说「需要帮助吗」这类空话；
+4. 结尾留一个观众可以回应的钩子（例如「要不要我讲讲……？」）。`;
+}
+
 /* ------------------------------------------------------------------ */
 /* 各接口实现                                                           */
 /* ------------------------------------------------------------------ */
@@ -501,8 +582,10 @@ async function handleGuide(req, res, body, customHeaders) {
   const message = body?.message;
   const history = body?.history;
   const visited = body?.visited;
+  // AGENT 自检测：proactive 非空时为「主动搭话」模式（由系统检测观众状态后发起，无需观众提问）
+  const proactive = body?.proactive && typeof body.proactive === 'object' ? body.proactive : null;
 
-  if (!message && !history?.length) {
+  if (!proactive && !message && !history?.length) {
     return sendError(res, 400, '缺少对话内容');
   }
 
@@ -518,7 +601,16 @@ async function handleGuide(req, res, body, customHeaders) {
 
   try {
     // RAG：语义召回相关展品；embedding 失败（null）时降级为全量清单
-    const query = latestUserQuery(message, history);
+    // proactive 模式下用「驻足作品 + 附近作品 + 展厅」作为召回 query
+    const query = proactive
+      ? [
+          proactive.focusTitle,
+          ...(Array.isArray(proactive.nearbyTitles) ? proactive.nearbyTitles : []),
+          proactive.zoneName,
+        ]
+          .filter((x) => typeof x === 'string' && x.trim())
+          .join(' ')
+      : latestUserQuery(message, history);
     let retrieved = null;
     if (query && Array.isArray(catalog) && catalog.length) {
       retrieved = await retrieveExhibits(catalog, query, customHeaders, 4);
@@ -528,8 +620,19 @@ async function handleGuide(req, res, body, customHeaders) {
       retrieved !== null
         ? guideRichContext(retrieved, catalog, visited)
         : guideCatalogText(catalog) + (vtext ? '\n\n' + vtext : '');
-    const messages = buildMessages(guideSystemPrompt(contextText), message, history);
-    const stream = llm.stream(messages, { model: 'doubao-seed-2-0-lite-260215', temperature: 0.7 });
+    const systemPrompt = proactive
+      ? guideProactiveSystemPrompt(contextText, proactive)
+      : guideSystemPrompt(contextText);
+    const userMessage = proactive
+      ? proactive.lang === 'en'
+        ? '(System-triggered proactive outreach. Generate the greeting line only.)'
+        : '（系统检测到观众状态，请生成主动搭话内容。）'
+      : message;
+    const messages = buildMessages(systemPrompt, userMessage, history);
+    const stream = llm.stream(messages, {
+      model: 'doubao-seed-2-0-lite-260215',
+      temperature: proactive ? 0.85 : 0.7, // 主动搭话更强调语气自然，温度略高
+    });
     for await (const chunk of stream) {
       const text = extractText(chunk?.content);
       if (text) writeSSE(res, { type: 'delta', content: text });

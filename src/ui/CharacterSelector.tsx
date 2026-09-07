@@ -5,7 +5,7 @@
  * 遮罩点击 / Esc / 右上 X 关闭（返回进入前的状态：explore 或 ready）。
  */
 import { motion } from 'framer-motion';
-import { X, Check, PersonStanding, AudioLines, Mic } from 'lucide-react';
+import { X, Check, PersonStanding, AudioLines, Mic, Sparkles, ShieldCheck } from 'lucide-react';
 import { useStore } from '@/state/store';
 import { VOICE_OPTIONS } from '@/config/voices';
 import { useI18n } from '@/lib/i18n';
@@ -20,7 +20,21 @@ export default function CharacterSelector() {
   const setCallMode = useStore((s) => s.setCallMode);
   const closeCharacters = useStore((s) => s.closeCharacters);
   const isMobile = useStore((s) => s.isMobile);
+  const proactiveEnabled = useStore((s) => s.proactiveEnabled);
+  const setProactiveEnabled = useStore((s) => s.setProactiveEnabled);
+  const sensingEnabled = useStore((s) => s.sensingEnabled);
+  const setSensingEnabled = useStore((s) => s.setSensingEnabled);
+  const sensingStatus = useStore((s) => s.sensingStatus);
   const { t, lang } = useI18n();
+
+  /* 摄像头感知运行状态的文案与颜色（黄铜 = 正常，黄铜红 = 异常） */
+  const sensingStatusLabel = t(`sensing.status.${sensingStatus}`);
+  const sensingStatusColor =
+    sensingStatus === 'active'
+      ? 'var(--brass)'
+      : sensingStatus === 'denied' || sensingStatus === 'unavailable'
+        ? '#a63d2f'
+        : 'var(--stone)';
 
   const inputModes = [
     { id: 'push' as const, icon: Mic, name: t('settings.pushName'), label: t('settings.pushLabel'), desc: t('settings.pushDesc') },
@@ -221,6 +235,90 @@ export default function CharacterSelector() {
               );
             })}
           </div>
+        </div>
+
+        {/* 主动导览（AGENT 自检测：行为信号为主，视觉感知消歧） */}
+        <div className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles size={16} strokeWidth={1.5} style={{ color: 'var(--brass)' }} />
+            <h3 className="font-serif-lumen text-[15px] font-medium">{t('settings.proactive')}</h3>
+            <span className="font-mono-lumen text-[11px] uppercase tracking-[0.1em]" style={{ color: 'var(--stone)' }}>
+              Agent
+            </span>
+          </div>
+
+          {/* 主动导览开关 */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={proactiveEnabled}
+            onClick={() => setProactiveEnabled(!proactiveEnabled)}
+            className="flex w-full items-center justify-between rounded-[12px] border px-3.5 py-3 text-left transition-colors"
+            style={{
+              borderColor: proactiveEnabled ? 'var(--brass)' : 'var(--line)',
+              background: proactiveEnabled ? 'rgba(166,124,61,.06)' : 'transparent',
+            }}
+          >
+            <span className="min-w-0 pr-3">
+              <span className="font-serif-lumen text-[14px] font-medium">{t('settings.proactive')}</span>
+              <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: 'var(--ink-60)' }}>
+                {t('settings.proactiveDesc')}
+              </span>
+            </span>
+            <span
+              className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+              style={{ background: proactiveEnabled ? 'var(--brass)' : 'var(--line)' }}
+            >
+              <span
+                className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
+                style={{ left: proactiveEnabled ? '1.375rem' : '0.125rem' }}
+              />
+            </span>
+          </button>
+
+          {/* 摄像头感知开关（桌面端可用；全本地推理，绝不上传） */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={sensingEnabled}
+            disabled={isMobile}
+            onClick={() => setSensingEnabled(!sensingEnabled)}
+            className="mt-2 flex w-full items-center justify-between rounded-[12px] border px-3.5 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+            style={{
+              borderColor: sensingEnabled ? 'var(--brass)' : 'var(--line)',
+              background: sensingEnabled ? 'rgba(166,124,61,.06)' : 'transparent',
+            }}
+          >
+            <span className="min-w-0 pr-3">
+              <span className="flex items-baseline gap-2">
+                <span className="font-serif-lumen text-[14px] font-medium">{t('settings.sensing')}</span>
+                <span
+                  className="font-mono-lumen text-[10.5px] uppercase tracking-[0.08em]"
+                  style={{ color: sensingStatusColor }}
+                >
+                  {sensingStatusLabel}
+                </span>
+              </span>
+              <span className="mt-0.5 block text-[11.5px] leading-snug" style={{ color: 'var(--ink-60)' }}>
+                {isMobile ? t('settings.sensingDesktopOnly') : t('settings.sensingDesc')}
+              </span>
+              {!isMobile && sensingEnabled && (
+                <span className="mt-1 flex items-center gap-1 text-[10.5px]" style={{ color: 'var(--stone)' }}>
+                  <ShieldCheck size={12} strokeWidth={1.5} />
+                  {t('settings.sensingPrivacy')}
+                </span>
+              )}
+            </span>
+            <span
+              className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+              style={{ background: sensingEnabled ? 'var(--brass)' : 'var(--line)' }}
+            >
+              <span
+                className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
+                style={{ left: sensingEnabled ? '1.375rem' : '0.125rem' }}
+              />
+            </span>
+          </button>
         </div>
 
         <div className="mt-5 text-center text-[12.5px]" style={{ color: 'var(--stone)' }}>

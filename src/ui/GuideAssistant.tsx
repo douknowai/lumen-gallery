@@ -59,6 +59,22 @@ export default function GuideAssistant() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, streaming]);
 
+  /* 主动搭话种子同步（AGENT 自检测）：ProactiveNudge 生成完毕后写入历史，
+     观众点「回应」打开面板即可无缝接续（按 seq 去重）。
+     走 store 订阅回调而非 effect 内 setState，避免级联渲染 */
+  const lastSeedSeqRef = useRef(0);
+  useEffect(() => {
+    return useStore.subscribe((state, prev) => {
+      const seed = state.guideSeed;
+      if (!seed?.text || seed === prev.guideSeed || seed.seq === lastSeedSeqRef.current) return;
+      lastSeedSeqRef.current = seed.seq;
+      const msg: ChatMessage = { role: 'assistant', content: seed.text };
+      historyRef.current = [...historyRef.current, msg];
+      saveGuideHistory(historyRef.current);
+      setMessages((p) => [...p, msg]);
+    });
+  }, []);
+
   const send = useCallback(
     async (raw: string) => {
       const text = raw.trim();

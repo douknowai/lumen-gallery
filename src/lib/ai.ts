@@ -192,6 +192,41 @@ export async function* guideStream(
   });
 }
 
+/** 主动搭话的触发上下文（AGENT 自检测：由前端感知层组装） */
+export interface GuideProactive {
+  /** hesitate=驻足犹豫 lost=迷失 wander=徘徊 related=看得出神顺势推荐 */
+  reason: 'hesitate' | 'lost' | 'wander' | 'related';
+  /** 观众当前所在展厅名 */
+  zoneName?: string;
+  /** 正在驻足的作品标题 */
+  focusTitle?: string;
+  /** 已驻足秒数 */
+  dwellSeconds?: number;
+  /** 同展厅附近作品标题（供推荐与消歧） */
+  nearbyTitles?: string[];
+  /** 观众氛围（仅 delighted/confused 会影响语气） */
+  mood?: 'delighted' | 'confused';
+  /** 搭话语言 */
+  lang?: 'zh' | 'en';
+}
+
+/** 导览员主动搭话（LLM 流式，SSE；proactive 模式生成一句具体、克制、留钩子的搭话） */
+export async function* guideProactiveStream(
+  proactive: GuideProactive,
+  catalog: GuideCatalogItem[],
+  visited: GuideVisitedItem[] = [],
+  lang: 'zh' | 'en' = 'zh',
+): AsyncGenerator<string> {
+  yield* postSSEStream('/api/ai/guide', {
+    uid: getUid(),
+    catalog,
+    message: '',
+    history: [],
+    visited,
+    proactive: { ...proactive, lang },
+  });
+}
+
 /**
  * 按句末标点切分文本，用于「分句并行合成 → 队列播放」。
  * 覆盖中英文常见句末标点，忽略纯英文句号以免误伤小数/缩写。

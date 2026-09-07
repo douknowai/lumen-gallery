@@ -36,6 +36,13 @@ const VOICE_STORAGE_KEY = 'lumen.voice';
 const CALL_MODE_STORAGE_KEY = 'lumen.callmode';
 /** 界面语言持久化 key */
 const LANG_STORAGE_KEY = 'lumen.lang';
+/** 主动导览开关持久化 key */
+const PROACTIVE_STORAGE_KEY = 'lumen.proactive';
+/** 摄像头感知开关持久化 key */
+const SENSING_STORAGE_KEY = 'lumen.sensing';
+
+/** 摄像头感知运行状态（不持久化，运行时反馈） */
+export type SensingStatus = 'off' | 'requesting' | 'active' | 'denied' | 'unavailable';
 
 /** 启动时读取本地记忆的角色 id（校验在数据加载后由 useGalleryLoader 完成） */
 function readSavedCharacterId(): string | null {
@@ -84,6 +91,26 @@ function readSavedLang(): Lang {
     return window.localStorage.getItem(LANG_STORAGE_KEY) === 'en' ? 'en' : 'zh';
   } catch {
     return 'zh';
+  }
+}
+
+/** 启动时读取主动导览开关（默认关闭，opt-in） */
+function readSavedProactiveEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(PROACTIVE_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** 启动时读取摄像头感知开关（默认关闭；授权已在浏览器持久化，恢复后本地推理自动续跑） */
+function readSavedSensingEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(SENSING_STORAGE_KEY) === '1';
+  } catch {
+    return false;
   }
 }
 
@@ -137,6 +164,14 @@ export interface Store {
   guideOpen: boolean;
   /** WebXR 会话是否激活（VR 模式下桌面输入/相机/帧驱动暂停，交由 HMD + 手柄接管） */
   xrActive: boolean;
+  /** 主动导览开关（持久化 localStorage，默认关闭；AGENT 自检测的行为信号触发） */
+  proactiveEnabled: boolean;
+  /** 摄像头感知开关（持久化 localStorage，默认关闭；本地推理，绝不上传） */
+  sensingEnabled: boolean;
+  /** 摄像头感知运行状态（off/requesting/active/denied/unavailable） */
+  sensingStatus: SensingStatus;
+  /** 导览员外部种子消息（主动搭话完成后写入，面板打开即可接续；seq 去重） */
+  guideSeed: { text: string; seq: number } | null;
 
   setData: (d: ExhibitsData) => void;
   setCharacters: (c: CharactersData) => void;
@@ -184,6 +219,14 @@ export interface Store {
   closeGuide: () => void;
   toggleGuide: () => void;
   setXrActive: (v: boolean) => void;
+  /** 设置主动导览开关（持久化） */
+  setProactiveEnabled: (v: boolean) => void;
+  /** 设置摄像头感知开关（持久化；关闭时状态复位 off） */
+  setSensingEnabled: (v: boolean) => void;
+  /** 设置摄像头感知运行状态（不持久化） */
+  setSensingStatus: (v: SensingStatus) => void;
+  /** 主动搭话完成 → 种子写入导览员历史（seq 递增去重） */
+  seedGuide: (text: string) => void;
   /** Esc 逐层返回：lightbox > modal > help > explore */
   escape: () => void;
 }
@@ -214,6 +257,10 @@ export const useStore = create<Store>((set, get) => ({
   lang: readSavedLang(),
   guideOpen: false,
   xrActive: false,
+  proactiveEnabled: readSavedProactiveEnabled(),
+  sensingEnabled: readSavedSensingEnabled(),
+  sensingStatus: 'off',
+  guideSeed: null,
 
   setData: (d) => set({ data: d }),
   setCharacters: (c) => set({ characters: c }),
@@ -320,6 +367,25 @@ export const useStore = create<Store>((set, get) => ({
   openGuide: () => set({ guideOpen: true }),
   closeGuide: () => set({ guideOpen: false }),
   toggleGuide: () => set((s) => ({ guideOpen: !s.guideOpen })),
+  setProactiveEnabled: (v) => {
+    try {
+      window.localStorage.setItem(PROACTIVE_STORAGE_KEY, v ? '1' : '0');
+    } catch {
+      /* 隐私模式等场景忽略 */
+    }
+    set({ proactiveEnabled: v });
+  },
+  setSensingEnabled: (v) => {
+    try {
+      window.localStorage.setItem(SENSING_STORAGE_KEY, v ? '1' : '0');
+    } catch {
+      /* 隐私模式等场景忽略 */
+    }
+    set({ sensingEnabled: v, sensingStatus: v ? 'requesting' : 'off' });
+  },
+  setSensingStatus: (v) => set({ sensingStatus: v }),
+  seedGuide: (text) =>
+    set((s) => ({ guideSeed: { text, seq: (s.guideSeed?.seq ?? 0) + 1 } })),
   escape: () => {
     const s = get();
     if (s.guideOpen) return s.closeGuide();

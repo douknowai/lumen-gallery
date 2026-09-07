@@ -18,6 +18,7 @@ import { PhoneOff, Maximize2, Minimize2, AudioLines, Mic, Volume2 } from 'lucide
 import { useStore, selectCallExhibit } from '@/state/store';
 import { narrate, asr, chatStream, ttsSegments, loadChatHistory, saveChatHistory, type AiExhibitBrief, type ChatMessage, type TtsSegment } from '@/lib/ai';
 import { encodeAudioToBase64Wav } from '@/lib/encodeWav';
+import { sensing } from '@/systems/sensing/sensing';
 import { useI18n } from '@/lib/i18n';
 
 interface Transcript {
@@ -150,6 +151,30 @@ export default function ExhibitCall() {
   const runPartialAsrRef = useRef<() => void>(() => {});
 
   const isBusy = busy !== null;
+
+  /* ---------- 环境感知联动：观众离开屏幕自动暂停播报/拾音，回来恢复（AGENT 自检测） ---------- */
+  const pausedByAbsenceRef = useRef(false);
+  useEffect(() => {
+    const unsub = sensing.onPresenceChange((present) => {
+      const a = sharedAudio;
+      if (present) {
+        if (pausedByAbsenceRef.current) {
+          pausedByAbsenceRef.current = false;
+          if (a && a.src && a.paused) void a.play().catch(() => {});
+          if (vadRef.current.audioCtx) void vadRef.current.audioCtx.resume().catch(() => {});
+        }
+        return;
+      }
+      // 离场：暂停 TTS 播报 + 挂起免提拾音（AudioContext 挂起后能量检测自然静默）
+      if (playingRef.current && a && !a.paused) {
+        pausedByAbsenceRef.current = true;
+        a.pause();
+      }
+      if (vadRef.current.audioCtx) void vadRef.current.audioCtx.suspend().catch(() => {});
+    });
+    return unsub;
+  }, []);
+
 
   /* ---------- 基础资源控制 ---------- */
   const stopAudioInternal = useCallback(() => {
