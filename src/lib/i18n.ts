@@ -99,6 +99,18 @@ const DICT: Record<string, { zh: string; en: string }> = {
   'help.about': { zh: '关于本展', en: 'About This Exhibition' },
   'help.close': { zh: '关闭帮助', en: 'Close help' },
   'help.escClose': { zh: '按 Esc 或点击空白处关闭', en: 'Press Esc or click outside to close' },
+
+  /* ---------- 策展工作台（/cms） ---------- */
+  'cms.ok': { zh: '确定', en: 'OK' },
+  'cms.cancel': { zh: '取消', en: 'Cancel' },
+  'cms.delete': { zh: '删除', en: 'Delete' },
+  'cms.missingEn': { zh: '缺 EN', en: 'Missing EN' },
+  'cms.missingEnHint': { zh: '补充英文翻译', en: 'Add English translation' },
+  'cms.asset.placeholder': { zh: '粘贴素材地址，或点右侧上传', en: 'Paste an asset URL or upload' },
+  'cms.asset.clear': { zh: '清空素材地址', en: 'Clear asset URL' },
+  'cms.asset.upload': { zh: '上传', en: 'Upload' },
+  'cms.asset.uploading': { zh: '上传中…', en: 'Uploading…' },
+  'cms.asset.tooLarge': { zh: '文件过大（上限 10MB）', en: 'File too large (10MB max)' },
 };
 
 export function translate(lang: Lang, key: string): string {

@@ -913,7 +913,9 @@ const CMS_ASSET_EXT = {
   'image/gif': '.gif', 'image/avif': '.avif', 'image/svg+xml': '.svg',
   'video/mp4': '.mp4', 'video/webm': '.webm',
 };
-const CMS_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+/* 上限 10MB（原始字节）。注意请求体走 base64 JSON，受全局 MAX_BODY_BYTES(15MB) 约束，
+   10MB 原始文件 base64 后约 13.7MB，仍在 body 上限内；不要在未同步调高 MAX_BODY_BYTES 时放宽本值。 */
+const CMS_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 async function handleCmsUpload(req, res) {
   try {
@@ -930,7 +932,7 @@ async function handleCmsUpload(req, res) {
     }
     const raw = Buffer.from(body.dataBase64, 'base64');
     if (raw.length === 0) return sendError(res, 400, '文件内容为空');
-    if (raw.length > CMS_MAX_UPLOAD_BYTES) return sendError(res, 413, '文件过大（上限 20MB）');
+    if (raw.length > CMS_MAX_UPLOAD_BYTES) return sendError(res, 413, '文件过大（上限 10MB）');
 
     const safeName = String(body?.fileName || 'asset')
       .split(/[\\/]/).pop()
@@ -957,7 +959,14 @@ async function handleCmsAsset(res, pathname) {
     const buf = await storage.readFile({ fileKey: key });
     const ext = `.${(key.split('.').pop() || '').toLowerCase()}`;
     const mime = Object.keys(CMS_ASSET_EXT).find((m) => CMS_ASSET_EXT[m] === ext) || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': mime, 'Content-Length': buf.length, 'Cache-Control': 'public, max-age=86400' });
+    // SVG 等矢量素材可内嵌脚本：加 CSP sandbox 使直接打开时禁脚本/同源操作（<img> 引用不受影响），防存储型 XSS
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Content-Length': buf.length,
+      'Cache-Control': 'public, max-age=86400',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox",
+    });
     res.end(buf);
   } catch (err) {
     return sendError(res, 404, '素材不存在或读取失败');

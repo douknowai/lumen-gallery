@@ -195,39 +195,45 @@ export default function CmsPage() {
 
   /* ---------------- 保存 ---------------- */
   const handleSaveRef = useRef<() => Promise<void>>(async () => {});
+  const saveBusyRef = useRef(false);
   const handleSave = useCallback(async () => {
-    if (!data) return;
+    if (!data || saveBusyRef.current) return;
     if (errorCount > 0) {
       setBanner({ kind: 'error', text: `有 ${errorCount} 件展品存在校验错误，请修正后再保存（列表中的红色标记可快速定位）。` });
       return;
     }
-    await ensureToken(async () => {
-      setSaving(true);
-      try {
-        const r = await saveExhibits(data.exhibits);
-        setDirty(false);
-        localStorage.removeItem(DRAFT_KEY);
-        setDraftInfo(null);
-        setMeta((prev) => (prev ? { ...prev, warning: typeof r.warning === 'string' ? r.warning : undefined } : prev));
-        setBanner({ kind: 'success', text: `已保存 ${r.count ?? data.exhibits.length} 件展品。${r.warning ?? ''}` });
-      } catch (err) {
-        if (err instanceof CmsApiError && err.code === 401) {
-          clearCmsToken();
-          setBanner({ kind: 'error', text: '口令已失效，请重新验证。' });
-          await ensureToken(() => { void handleSaveRef.current(); });
-          return;
+    saveBusyRef.current = true;
+    try {
+      await ensureToken(async () => {
+        setSaving(true);
+        try {
+          const r = await saveExhibits(data.exhibits);
+          setDirty(false);
+          localStorage.removeItem(DRAFT_KEY);
+          setDraftInfo(null);
+          setMeta((prev) => (prev ? { ...prev, warning: typeof r.warning === 'string' ? r.warning : undefined } : prev));
+          setBanner({ kind: 'success', text: `已保存 ${r.count ?? data.exhibits.length} 件展品。${r.warning ?? ''}` });
+        } catch (err) {
+          if (err instanceof CmsApiError && err.code === 401) {
+            clearCmsToken();
+            setBanner({ kind: 'error', text: '口令已失效，请重新验证。' });
+            await ensureToken(() => { void handleSaveRef.current(); });
+            return;
+          }
+          if (err instanceof CmsApiError && err.code === 400) {
+            const errs = err.payload.errors;
+            const text = Array.isArray(errs) && errs.length ? (errs as string[]).join('\n') : err.message;
+            setBanner({ kind: 'error', text: `服务器校验未通过：\n${text}` });
+            return;
+          }
+          setBanner({ kind: 'error', text: err instanceof Error ? err.message : '保存失败' });
+        } finally {
+          setSaving(false);
         }
-        if (err instanceof CmsApiError && err.code === 400) {
-          const errs = err.payload.errors;
-          const text = Array.isArray(errs) && errs.length ? (errs as string[]).join('\n') : err.message;
-          setBanner({ kind: 'error', text: `服务器校验未通过：\n${text}` });
-          return;
-        }
-        setBanner({ kind: 'error', text: err instanceof Error ? err.message : '保存失败' });
-      } finally {
-        setSaving(false);
-      }
-    });
+      });
+    } finally {
+      saveBusyRef.current = false;
+    }
   }, [data, errorCount, ensureToken]);
   useEffect(() => { handleSaveRef.current = handleSave; }, [handleSave]);
 
@@ -278,11 +284,12 @@ export default function CmsPage() {
   }, [data]);
 
   /* ---------------- 预览闭环（P0-1） ---------------- */
-  const previewInGallery = useCallback((id: string) => {
+  const previewInGallery = useCallback((e: CmsExhibit) => {
     if (dirty) {
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ savedAt: Date.now(), data })); } catch { /* 忽略 */ }
     }
-    sessionStorage.setItem('lumen.cmsPreview', id);
+    // 携带编辑中完整展品（未保存修改 / 新建展品也可预览），展厅侧由 useCmsPreview 注入
+    try { sessionStorage.setItem('lumen.cmsPreview', JSON.stringify({ id: e.id, exhibit: e })); } catch { /* 忽略 */ }
     navigate('/');
   }, [data, dirty, navigate]);
 
@@ -484,9 +491,12 @@ export default function CmsPage() {
                         const isSel = e.id === selectedId;
                         return (
                           <li key={e.id}>
-                            <button
+                            <div
+                              role="button"
+                              tabIndex={0}
                               onClick={() => selectExhibit(e.id)}
-                              className="group flex w-full items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition-colors"
+                              onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectExhibit(e.id); } }}
+                              className="group flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition-colors"
                               style={{
                                 borderColor: isSel ? 'var(--brass)' : 'transparent',
                                 background: isSel ? 'var(--paper-dim)' : 'transparent',
@@ -504,7 +514,7 @@ export default function CmsPage() {
                                 <span className="block truncate text-[10.5px] text-[var(--stone)]">{e.id}</span>
                               </span>
                               <span className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100" onClick={(ev) => ev.stopPropagation()}>
-                                <button onClick={() => previewInGallery(e.id)} title="去展厅看"
+                                <button onClick={() => previewInGallery(e)} title="去展厅看"
                                   className="rounded-full border p-1 hover:border-[var(--brass)] hover:text-[var(--brass)]" style={{ borderColor: 'var(--line)' }}>
                                   <Eye size={12} />
                                 </button>
@@ -529,7 +539,7 @@ export default function CmsPage() {
                                     title="缺英文标题或介绍">EN</span>
                                 )}
                               </span>
-                            </button>
+                            </div>
                           </li>
                         );
                       })}

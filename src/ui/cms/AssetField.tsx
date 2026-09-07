@@ -30,6 +30,10 @@ export function AssetField({ label, value, onChange, kind = 'image', error, inpu
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setUploadError('');
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError(t('cms.asset.tooLarge'));
+      return;
+    }
     setUploading(true);
     try {
       const base64 = await fileToBase64(file);
