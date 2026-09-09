@@ -92,6 +92,9 @@ docs/
 info.md
 AGENTS.md
 DESIGN.md
+report.md
+public/report/
+LUMEN参赛项目文档.docx
 
 # ────────────────────────────────────────────────────────────
 # 内部工具 / 开发状态（不对外发布）
@@ -100,6 +103,10 @@ github-account-takeover/
 github-account-takeover.skill
 scripts/git-sync/
 .github-bridge.json
+scripts/build_docx.py
+
+# 参赛材料（大赛通知 / 项目文档模板，仅本地留存）
+/assets/
 
 # ────────────────────────────────────────────────────────────
 # 开发期临时脚本与截图
