@@ -427,6 +427,15 @@ export function selectVisitedExhibits(s: Store): { id: string; title: string }[]
  * - x/z 世界坐标，yaw 朝向（弧度，0=面向+Z），speed 当前速率，running 是否疾跑
  * - camYaw/camPitch 相机朝向（相机 rig 直驱），camDistance 第三人称距离
  */
+/** dev 调试：?pos=x,z,yaw 直接指定出生点与朝向（截图辅助，正式构建可移除） */
+function debugSpawn(): Partial<{ x: number; z: number; yaw: number; camYaw: number }> {
+  if (typeof window === 'undefined') return {};
+  const p = new URLSearchParams(window.location.search).get('pos');
+  if (!p) return {};
+  const [px, pz, pyaw] = p.split(',').map(Number);
+  return { x: px || 0, z: pz ?? 5.2, yaw: pyaw ?? Math.PI, camYaw: pyaw ?? Math.PI };
+}
+
 export const playerRef = {
   x: 0,
   z: 5.2,
@@ -436,6 +445,7 @@ export const playerRef = {
   camYaw: Math.PI,
   camPitch: 0.12,
   camDistance: 3.4,
+  ...debugSpawn(),
   /** 聚焦运镜请求：非 null 时相机 rig 执行 0.8s 运镜 */
   focusMove: null as null | { x: number; z: number; lookX: number; lookY: number; lookZ: number; t: number },
 };

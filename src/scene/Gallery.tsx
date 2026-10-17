@@ -128,6 +128,7 @@ export default function Gallery() {
         gl={{
           antialias: !LOWSPEC,
           powerPreference: 'high-performance',
+          preserveDrawingBuffer: true, // dev 截图辅助：toDataURL 可读帧
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,
           outputColorSpace: THREE.SRGBColorSpace,

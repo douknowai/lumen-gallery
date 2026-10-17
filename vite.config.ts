@@ -1,4 +1,5 @@
 import path from "path"
+import fs from "node:fs"
 import react from "@vitejs/plugin-react"
 import { defineConfig, type Connect } from "vite"
 import { inspectAttr } from 'plugin-inspect-react-code'
@@ -13,6 +14,24 @@ function lumenAiApi() {
     configureServer(server: { middlewares: Connect.Server }) {
       server.middlewares.use(async (req, res, next) => {
         const url = (req.url || "") as string
+        // dev-only 截图端点：接收 canvas.toDataURL 的 base64 落盘（素材采集辅助）
+        if (url.startsWith("/api/dev-screenshot") && req.method === "POST") {
+          let body = ""
+          req.on("data", (c) => (body += c))
+          req.on("end", () => {
+            try {
+              const { name, data } = JSON.parse(body)
+              const dir = path.resolve("dev-shots")
+              fs.mkdirSync(dir, { recursive: true })
+              fs.writeFileSync(path.join(dir, name), Buffer.from(data, "base64"))
+              res.end("ok")
+            } catch (e) {
+              res.writeHead(500)
+              res.end(String(e))
+            }
+          })
+          return
+        }
         if (!url.startsWith("/api/")) {
           next()
           return

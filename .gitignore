@@ -114,6 +114,13 @@ scripts/build_docx.py
 scripts/_shots/
 scripts/screenshot.mjs
 scripts/debug*.mjs
+dev-shots/
+
+# npm 误装产物（本项目统一使用 pnpm，锁文件只保留 pnpm-lock.yaml）
+package-lock.json
+
+# Windows 保留名残留文件
+nul
 
 # ────────────────────────────────────────────────────────────
 # 预览 / 部署临时文件
