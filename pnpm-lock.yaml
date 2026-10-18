@@ -117,8 +117,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       coze-coding-dev-sdk:
-        specifier: ^0.7.24
-        version: 0.7.24(openai@7.5.0(ws@8.21.3)(zod@4.4.3))(ws@8.21.3)
+        specifier: ^0.7.32
+        version: 0.7.32(openai@7.5.0(ws@8.21.3)(zod@4.4.3))(ws@8.21.3)
       date-fns:
         specifier: ^4.1.0
         version: 4.4.0
@@ -2353,8 +2353,8 @@ packages:
   core-js-compat@3.49.0:
     resolution: {integrity: sha512-VQXt1jr9cBz03b331DFDCCP90b3fanciLkgiOoy8SBHy06gNf+vQ1A3WFLqG7I8TipYIKeYK9wxd0tUrvHcOZA==}
 
-  coze-coding-dev-sdk@0.7.24:
-    resolution: {integrity: sha512-oL9Tg5PwxP6iMixonzzMO4aBjOKWcFUMVM+iz5dPyaqQkG84HP1y9DqK5DJVmtdfJuYdAW7pzOatDqLvgvZiXg==}
+  coze-coding-dev-sdk@0.7.32:
+    resolution: {integrity: sha512-msyVSaZXcnW/dK7qaREeOqjj/kZtQSe7cH/OXhDf+/zjIvrUleRsSQrRFkIkwyuuze9oIEFBo0CC+/7x6YZpQA==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -6099,7 +6099,7 @@ snapshots:
     dependencies:
       browserslist: 4.28.6
 
-  coze-coding-dev-sdk@0.7.24(openai@7.5.0(ws@8.21.3)(zod@4.4.3))(ws@8.21.3):
+  coze-coding-dev-sdk@0.7.32(openai@7.5.0(ws@8.21.3)(zod@4.4.3))(ws@8.21.3):
     dependencies:
       '@langchain/core': 1.2.9(openai@7.5.0(ws@8.21.3)(zod@4.4.3))(ws@8.21.3)
       '@langchain/openai': 1.5.10(@langchain/core@1.2.9(openai@7.5.0(ws@8.21.3)(zod@4.4.3))(ws@8.21.3))(ws@8.21.3)
